@@ -57,6 +57,7 @@ class Map(ActorMixin):
         self.tile_side_length = 16
         self.border = 2
         self.tiles = {}
+        # self.surface = pygame.surface.Surface()
         width = pygame.display.get_surface().get_size()[0]
         self.hovered_tile = None
         for i in range(0, width / self.tile_side_length):
@@ -74,10 +75,10 @@ class Map(ActorMixin):
         x = position[0] / (self.tile_side_length + self.border)
         y = position[1] / (self.tile_side_length + self.border)
         c_hovered = self.tiles[x][y]
-        if self.hovered_tile and self.hovered_tile == c_hovered: return
-        else: self.hovered_tile = c_hovered
-        self.hovered_tile.hover = False
-        self.hovered_tile.render(pygame.display.get_surface())
+        if self.hovered_tile == c_hovered: return
+        if self.hovered_tile != None:
+            self.hovered_tile.hover = False
+            self.hovered_tile.render(pygame.display.get_surface())
         self.tiles[x][y].hover = True
         self.tiles[x][y].render(pygame.display.get_surface())
         self.hovered_tile = c_hovered
@@ -116,6 +117,7 @@ class Game(ActorMixin):
 
     def __init__(self):
         pygame.init()
+        logging.warning('PyGame Version {}, SDL Version: {}'.format(pygame.version.ver, pygame.get_sdl_version()))
         self.modes = pygame.display.list_modes()
         self.screen_size = self.width , self.height = self.modes[0]
         self.fullscreen = True
