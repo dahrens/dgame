@@ -26,15 +26,15 @@ class EventDispatcher(object):
     def dispatch(self, event):
         if event.type == pygame.MOUSEMOTION or event.type == pygame.MOUSEBUTTONUP or event.type == pygame.MOUSEBUTTONDOWN:
             self._mouse(event)
-            return False
+            return True
         elif event.type == pygame.KEYDOWN or event.type == pygame.KEYUP:
             self._key(event)
-            return False
-        elif event.type == pygame.QUIT:
             return True
+        elif event.type == pygame.QUIT:
+            return False
         else:
             logging.warning('Unhandled event: ' + str(event))
-            return False
+            return True
 
     def _mouse(self, event):
         for m in self.mouse_actors:
@@ -63,8 +63,8 @@ class Map(ActorMixin):
         for i in range(0, width / self.tile_side_length):
             self.tiles[i] = {}
             for j in range(0, width / self.tile_side_length):
-                t = Tile((i * (self.tile_side_length + self.border), j * (self.tile_side_length + self.border)), (self.tile_side_length, self.tile_side_length))
-                t.render(pygame.display.get_surface())
+                t = Tile((i * (self.tile_side_length + self.border), j * (self.tile_side_length + self.border)), (self.tile_side_length, self.tile_side_length), pygame.display.get_surface())
+                t.render()
                 self.tiles[i][j] = t
 
     def handle_mouse(self, event):
@@ -72,32 +72,34 @@ class Map(ActorMixin):
         return True
 
     def tile_hover(self, position):
+        c = self._get_current_hovered_tile(position)
+        if self.hovered_tile == c: return
+        if self.hovered_tile != None:
+            self.hovered_tile.toggle_hover()
+        c.toggle_hover()
+        self.hovered_tile = c
+
+    def _get_current_hovered_tile(self, position):
         x = position[0] / (self.tile_side_length + self.border)
         y = position[1] / (self.tile_side_length + self.border)
-        c_hovered = self.tiles[x][y]
-        if self.hovered_tile == c_hovered: return
-        if self.hovered_tile != None:
-            self.hovered_tile.hover = False
-            self.hovered_tile.render(pygame.display.get_surface())
-        self.tiles[x][y].hover = True
-        self.tiles[x][y].render(pygame.display.get_surface())
-        self.hovered_tile = c_hovered
-
+        return self.tiles[x][y]
 
 class Tile(object):
-    def __init__(self, position, size):
+    def __init__(self, position, size, surface):
+        self.surface = surface
         self.position = position
         self.size = size
         self.color = (255, 255, 255)
         self.hover_color = (100, 100, 100)
-        self.hover = False
-        self.rendered = False
+        self._hover = False
 
-    def render(self, screen):
-        color = self.color if not self.hover else self.hover_color
-        if not self.hover and self.rendered: logging.warning('rerender at {} with {} '.format(str(self.position), str(color)))
-        screen.fill(color, pygame.Rect(self.position, self.size))
-        self.rendered = True
+    def toggle_hover(self):
+        self._hover = not self._hover
+        self.render()
+
+    def render(self):
+        color = self.color if not self._hover else self.hover_color
+        self.surface.fill(color, pygame.Rect(self.position, self.size))
 
 
 class Menu(ActorMixin):
@@ -117,10 +119,18 @@ class Game(ActorMixin):
 
     def __init__(self):
         pygame.init()
-        logging.warning('PyGame Version {}, SDL Version: {}'.format(pygame.version.ver, pygame.get_sdl_version()))
         self.modes = pygame.display.list_modes()
         self.screen_size = self.width , self.height = self.modes[0]
         self.fullscreen = True
+        if self.fullscreen:
+            screen = pygame.display.set_mode(self.screen_size, pygame.FULLSCREEN | pygame.DOUBLEBUF | pygame.HWSURFACE)
+        else:
+            screen = pygame.display.set_mode(self.screen_size)
+        screen.fill((0, 0, 0))
+        self.dispatcher = EventDispatcher()
+        self.dispatcher.register(self)
+        self.map = Map()
+        self.dispatcher.register(self.map)
 
     def handle_key(self, event):
         if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
@@ -128,20 +138,10 @@ class Game(ActorMixin):
             return True
 
     def run(self):
-        if self.fullscreen:
-            screen = pygame.display.set_mode(self.screen_size, pygame.FULLSCREEN | pygame.DOUBLEBUF | pygame.HWSURFACE)
-        else:
-            screen = pygame.display.set_mode(self.screen_size)
-        screen.fill((0, 0, 0))
-        dispatcher = EventDispatcher()
-        dispatcher.register(self)
-        m = Map()
-        dispatcher.register(m)
-
-        done = False
-        while not done:
+        running = True
+        while running:
             for event in pygame.event.get():
-                done = dispatcher.dispatch(event)
+                running = self.dispatcher.dispatch(event)
             pygame.display.flip()
         sys.exit()
 
