@@ -5,11 +5,39 @@ from dgame.ui import *
 import logging
 
 
-class Map(ActorMixin, ViewportSprite):
+class MapFactory(object):
+
+    SAMPLE = [['x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x'],
+              ['x', ' ', ' ', ' ', 'x', ' ', ' ', ' ', ' ', 'x'],
+              ['x', ' ', ' ', ' ', ' ', ' ', ' ', 'x', ' ', 'x'],
+              ['x', ' ', ' ', ' ', 'x', ' ', ' ', 'x', ' ', 'x'],
+              ['x', 'x', 'x', 'x', 'x', ' ', ' ', 'x', ' ', 'x'],
+              ['x', ' ', ' ', ' ', 'x', ' ', ' ', 'x', ' ', 'x'],
+              ['x', ' ', ' ', ' ', 'x', 'x', 'x', 'x', ' ', 'x'],
+              ['x', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', 'x'],
+              ['x', ' ', ' ', ' ', ' ', ' ', ' ', 'x', ' ', 'x'],
+              ['x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x']]
+
+    @staticmethod
+    def create(self, m):
+        size_in_tiles = (len(m[0]), len(m))
+        n_map = Map(pygame.display.get_surface(), size_in_tiles = size_in_tiles)
+        for y, r in enumerate(m):
+            for x, v in enumerate(r):
+                if v == ' ':
+                    tile = n_map.tiles[x][y]
+                    tile.passable = True
+                    tile.color = (200, 200, 0)
+                    tile.render()
+        n_map.render()
+        return n_map
+
+
+'''class Map(ActorMixin, Sprite):
 
     mouse = True
 
-    def __init__(self, parent, tile_size = 64, size_in_tiles = (8, 8), rect = pygame.Rect((0, 0), (64 * 5, 64 * 5)), viewport_position = (0, 0)):
+    def __init__(self, parent, tile_size = 64, size_in_tiles = (8, 8), rect = pygame.Rect((0, 0), (10 * 64, 10 * 64)), viewport_position = (0, 0)):
         self.tile_width = self.tile_height = 64
         sprite_size = (size_in_tiles[0] * self.tile_width, size_in_tiles[1] * self.tile_height)
         super(Map, self).__init__(rect, parent, sprite_size, viewport_position)
@@ -35,7 +63,7 @@ class Map(ActorMixin, ViewportSprite):
         return self.tiles[x][y]
 
 
-class Tile(Sprite):
+class Tile(Element):
 
     def __init__(self, rect, map_pos, parent):
         self.map_pos = map_pos
@@ -43,9 +71,12 @@ class Tile(Sprite):
         self.inner_rect = pygame.Rect((self.border, self.border),
                                       (rect.width - 2 * self.border, rect.height - 2 * self.border))
         self._hover = False
+        # self.unexplored = True
+        # self.unexplored_color = (0, 0, 0)
+        self.passable = False
         self.color = (190, 190, 190)
-        self.hover_color = (200, 200, 200)
-        self.background_color = (255, 255, 255)
+        self.hover_color = (self.color[0] + 10, self.color[1] + 10, self.color[2] + 10)
+        self.background_color = (0, 0, 0)
         self.background_hover_color = (255, 0, 0)
         super(Tile, self).__init__(rect, parent)
 
@@ -59,8 +90,14 @@ class Tile(Sprite):
                          self.inner_rect)
         font = pygame.font.Font(None, 14)
         font_surface = font.render(str(self.map_pos), False, pygame.Color("black"))
-        self.sprite.blit(font_surface, (self.border * 2, self.border * 2))
+        self.sprite.blit(font_surface, (self.border * 2, self.border * 2))'''
 
+
+class Map(UiMixin):
+
+    _ui_class = Sprite
+
+    _ui_kwargs = {'rect': pygame.Rect(100, 100, 200, 200)}
 
 class Game(ActorMixin):
 
@@ -69,7 +106,7 @@ class Game(ActorMixin):
     def __init__(self):
         pygame.init()
         self.modes = pygame.display.list_modes()
-        self.screen_size = self.width , self.height = (800, 600)  # self.modes[0]
+        self.screen_size = self.width , self.height = (10 * 64, 10 * 64)  # self.modes[0]
         self.fullscreen = False
         if self.fullscreen:
             screen = pygame.display.set_mode(self.screen_size, pygame.FULLSCREEN | pygame.DOUBLEBUF | pygame.HWSURFACE)
@@ -78,8 +115,8 @@ class Game(ActorMixin):
         screen.fill((0, 0, 0))
         self.dispatcher = EventDispatcher()
         self.dispatcher.register(self)
+        # self.map = MapFactory.create(self, MapFactory.SAMPLE)
         self.map = Map(pygame.display.get_surface())
-        self.map.render()
         self.dispatcher.register(self.map)
 
     def handle_key(self, event):

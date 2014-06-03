@@ -1,5 +1,5 @@
 import pygame
-from ui import *
+from dgame.ui import *
 import logging
 
 UI_RENDER = pygame.USEREVENT + 1

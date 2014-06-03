@@ -1,31 +1,40 @@
 import sys, pygame
 import logging
 
-class Sprite(object):
+class Element(object):
 
-    def __init__(self, rect, parent, sprite = None):
+    def __init__(self, rect, parent, z_index = 0):
         self.rect = rect
         self.parent = parent
-        self.sprite = pygame.Surface(rect.size) if sprite == None else sprite
-        self.render()
+        self.z_index = z_index
+        self.el = pygame.Surface(rect.size)
 
     def render(self):
-        self._render()
-        self.parent.blit(self.sprite, self.rect.topleft)
-
-    def _render(self):
-        pass
+        self.parent.blit(self.el, self.rect.topleft)
 
 
-class ViewportSprite(Sprite):
+class Sprite(Element):
 
-    def __init__(self, rect, parent, sprite_size, viewport_position):
-        self.viewport_position = viewport_position
-        sprite = pygame.Surface(sprite_size)
-        self.viewport = pygame.Surface(rect.size)
-        super(ViewportSprite, self).__init__(rect, parent, sprite)
+    def __init__(self, rect, parent, sprite_size, sprite_pos):
+        self.sprite_pos = sprite_pos
+        self.sprite = pygame.Surface(sprite_size)
+        super(Sprite, self).__init__(rect, parent)
 
     def render(self):
-        self.viewport.blit(self.sprite, self.rect, (self.viewport_position, self.rect.size))
-        self._render()
-        self.parent.blit(self.viewport, self.rect.topleft)
+        self.el.blit(self.sprite, self.rect, (self.sprite_pos, self.rect.size))
+        super(Sprite, self).render()
+
+
+class UiMixin():
+
+    _ui_class = Element
+
+    _ui_kwargs = {}
+
+    def __init__(self, **kwargs):
+        self.ui = self.setup_ui(kwargs)
+
+    def setup_ui(self, **kwargs):
+        k = self._ui_class(**kwargs)
+        k.render()
+        return k
