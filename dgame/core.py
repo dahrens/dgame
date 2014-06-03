@@ -1,9 +1,9 @@
 import sys, pygame
-from pygame import gfxdraw
 import logging
 
 
 class ActorMixin(object):
+
     mouse = False
     key = False
     active = True
@@ -15,6 +15,7 @@ class ActorMixin(object):
         pass
 
 class EventDispatcher(object):
+
     def __init__(self):
         self.mouse_actors = []
         self.key_actors = []
@@ -53,19 +54,17 @@ class Map(ActorMixin):
 
     mouse = True
 
-    def __init__(self):
-        self.tile_side_length = 16
-        self.border = 2
-        self.tiles = {}
-        # self.surface = pygame.surface.Surface()
-        width = pygame.display.get_surface().get_size()[0]
+    def __init__(self, size_in_tiles = (100, 100), viewport_size = (64 * 24, 64 * 16), initial_viewport_position = (0, 0)):
+        self.tile_width = self.tile_height = 64
+        size = (size_in_tiles[0] * self.tile_width, size_in_tiles[1] * self.tile_height)
+        self.surface = pygame.surface.Surface(size)
+        self.tiles = [[Tile((x * self.tile_width, y * self.tile_height), (self.tile_width, self.tile_height), self.surface) for y in range(size_in_tiles[1])] for x in range(size_in_tiles[0])]
+        self.viewport_position = initial_viewport_position
+        self.viewport_size = viewport_size
+        self.viewport = pygame.Surface(viewport_size)
+        self.render()
+
         self.hovered_tile = None
-        for i in range(0, width / self.tile_side_length):
-            self.tiles[i] = {}
-            for j in range(0, width / self.tile_side_length):
-                t = Tile((i * (self.tile_side_length + self.border), j * (self.tile_side_length + self.border)), (self.tile_side_length, self.tile_side_length), pygame.display.get_surface())
-                t.render()
-                self.tiles[i][j] = t
 
     def handle_mouse(self, event):
         self.tile_hover(event.pos)
@@ -80,37 +79,47 @@ class Map(ActorMixin):
         self.hovered_tile = c
 
     def _get_current_hovered_tile(self, position):
-        x = position[0] / (self.tile_side_length + self.border)
-        y = position[1] / (self.tile_side_length + self.border)
+        x = position[0] / self.tile_width
+        y = position[1] / self.tile_width
         return self.tiles[x][y]
 
+    def render(self):
+        self._render_viewport()
+        pygame.display.get_surface().blit(self.viewport, (0, 0))
+
+    def _render_viewport(self):
+        self.viewport.blit(self.surface, (0, 0), (self.viewport_position, self.viewport_size))
+
 class Tile(object):
+
     def __init__(self, position, size, surface):
         self.surface = surface
         self.position = position
         self.size = size
-        self.color = (255, 255, 255)
-        self.hover_color = (100, 100, 100)
+        self.border = 2
+        self.inner_position = (self.position[0] + self.border, self.position[1] + self.border)
+        self.inner_size = (self.size[0] - 2 * self.border, self.size[1] - 2 * self.border)
+        self.font_position = (self.position[0] + 4 * self.border, self.position[1] + 4 * self.border)
         self._hover = False
+        self.color = (190, 190, 190)
+        self.hover_color = (200, 200, 200)
+        self.background_color = (255, 255, 255)
+        self.background_hover_color = (255, 0, 0)
+        self.render()
 
     def toggle_hover(self):
         self._hover = not self._hover
         self.render()
 
     def render(self):
-        color = self.color if not self._hover else self.hover_color
-        self.surface.fill(color, pygame.Rect(self.position, self.size))
+        self.surface.fill(self.background_color if not self._hover else self.background_hover_color,
+                          pygame.Rect(self.position, self.size))
+        self.surface.fill(self.color if not self._hover else self.hover_color,
+                          pygame.Rect(self.inner_position, self.inner_size))
+        font = pygame.font.Font(None, 14)
 
-
-class Menu(ActorMixin):
-
-    ACTIVATE = pygame.USEREVENT + 1
-    DEACTIVATE = pygame.USEREVENT + 2
-    mouse = True
-    key = True
-
-    def __init__(self):
-        pass
+        font_surface = font.render(str(self.position), True, pygame.Color("black"))
+        self.surface.blit(font_surface, self.font_position)
 
 
 class Game(ActorMixin):
@@ -142,6 +151,7 @@ class Game(ActorMixin):
         while running:
             for event in pygame.event.get():
                 running = self.dispatcher.dispatch(event)
+            self.map.render()
             pygame.display.flip()
         sys.exit()
 
