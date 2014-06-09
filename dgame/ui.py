@@ -1,27 +1,49 @@
-import pygame, os
+import pygame, os, random
 
 
-BIOMES_PATH = ['data', 'sprites', 'biomes']
-
-BIOMES = {
+BIOMES_CONFIG = {
     'default': {
         'entrance': 'stone_stairs_up',
         'exit': 'stone_stairs_down',
-        'unpassable': ['stone_dark0', 'wall_vines0', 'wall_vines1', 'wall_vines2', 'wall_vines3', 'wall_vines4', 'wall_vines5', 'wall_vines6'],
-        'passable': ['floor_vines0', 'floor_vines1', 'floor_vines2', 'floor_vines3', 'floor_vines4', 'floor_vines5', 'floor_vines6']
+        'unpassable': ['stone_dark0'],
+        'passable': ['floor_vines0'],
+        'wall': ['wall_vines0', 'wall_vines1', 'wall_vines2', 'wall_vines3', 'wall_vines4', 'wall_vines5', 'wall_vines6'],
+        'floor': ['floor_vines1', 'floor_vines2', 'floor_vines3', 'floor_vines4', 'floor_vines5', 'floor_vines6'],
     },
 }
 
-
 class SpriteSheet(dict):
 
-    def __init__(self, biome = 'default', image_format = 'png', sprite_size = (32, 32)):
-        path = BIOMES_PATH
-        path.append(biome)
+    def __init__(self, path, image_format = 'png', sprite_size = (32, 32)):
         self.folder = os.path.join(*path)
         for f in os.listdir(self.folder):
             if f.endswith('.' + image_format):
                 self[f.split('.')[0]] = pygame.image.load(os.path.join(*[self.folder, f])).convert()
+
+class Biome(object):
+
+    def __init__(self, name, config):
+        self._name = name
+        self._config = config
+        self._sheet = SpriteSheet(['data', 'sprites', 'biomes', name])
+
+    @property
+    def unpassable(self):
+        return self._sheet[self._config['unpassable'][random.randrange(0, len(self._config['unpassable']))]]
+
+    @property
+    def passable(self):
+        return self._sheet[self._config['passable'][random.randrange(0, len(self._config['passable']))]]
+
+    @property
+    def wall(self):
+        return self._sheet[self._config['wall'][random.randrange(0, len(self._config['wall']))]]
+
+Biomes = {}
+
+def init_biomes():
+    for name, config in BIOMES_CONFIG.iteritems():
+        Biomes[name] = Biome(name, config)
 
 
 class MapUi(pygame.Surface):
@@ -31,7 +53,7 @@ class MapUi(pygame.Surface):
     SCROLL_LEFT = 3
     SCROLL_RIGHT = 4
 
-    def __init__(self, tiles, biome = 'default', size_in_tiles = (100, 100), tile_size = (32, 32), camera_size = (20 * 32, 20 * 32), camera_position = (0, 0)):
+    def __init__(self, tiles, biome = None, size_in_tiles = (100, 100), tile_size = (32, 32), camera_size = (20 * 32, 20 * 32), camera_position = (0, 0)):
         self.biome = biome
         self.width = size_in_tiles[0] * tile_size[0]
         self.height = size_in_tiles[1] * tile_size[1]
@@ -39,7 +61,6 @@ class MapUi(pygame.Surface):
         self.tile_size = tile_size
         self.camera_size = camera_size
         self.camera_position = camera_position
-        self.biome_sheet = SpriteSheet(self.biome)
         self.scroll_speed = 16
         self.tiles = tiles
         super(MapUi, self).__init__((self.width, self.height))
@@ -72,7 +93,7 @@ class MapUi(pygame.Surface):
     def render(self):
         for column in self.tiles:
             for tile in column:
-                self.blit(self.biome_sheet.get(tile.ui), (tile.position[0] * self.tile_size[0], tile.position[1] * self.tile_size[1]))
+                self.blit(tile.ui, (tile.position[0] * self.tile_size[0], tile.position[1] * self.tile_size[1]))
         self.render_camera()
 
     def render_camera(self):
