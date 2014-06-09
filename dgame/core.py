@@ -1,8 +1,15 @@
 import pygame, sys, logging
 from dgame.event import EventDispatcher, ActorMixin
 from dgame.generate import MapGenerator
-from dgame.ui import MapUi, Biomes, init_biomes
+from dgame.ui import MapUi, TileUi, CreatureUi, init_biomes, get_biome
 
+
+class Player(ActorMixin):
+
+    key = True
+
+    def __init__(self):
+        self.ui = CreatureUi()
 
 class Map(ActorMixin):
 
@@ -12,7 +19,7 @@ class Map(ActorMixin):
         self.size_in_tiles = size_in_tiles
         self.tile_size = tile_size
         self.biome = biome
-        self.tiles = [[Tile((x, y), ui = biome.unpassable) for y in range(self.size_in_tiles[1])] for x in range(self.size_in_tiles[0])]
+        self.tiles = [[Tile((x, y)) for y in range(self.size_in_tiles[1])] for x in range(self.size_in_tiles[0])]
         self.ui = MapUi(self.tiles, self.biome, self.size_in_tiles, self.tile_size)
 
     def handle_key(self, event):
@@ -33,10 +40,11 @@ class Tile(object):
     STATE_PASSABLE = 1
     STATE_UNPASSABLE = 2
 
-    def __init__(self, position, state = STATE_UNPASSABLE, ui = None):
+    def __init__(self, position, state = STATE_UNPASSABLE):
         self.position = position
         self.state = state
-        self.ui = ui
+        self.objects = []
+        self.ui = TileUi()
 
 
 class Game(ActorMixin):
@@ -58,7 +66,7 @@ class Game(ActorMixin):
         self.dispatcher = EventDispatcher()
         self.dispatcher.register(self)
         init_biomes()
-        self.map_generator = MapGenerator(biome = Biomes['default'], size_in_tiles = (80, 40))
+        self.map_generator = MapGenerator(biome = get_biome(), size_in_tiles = (80, 40))
         self.map = self.map_generator.run()
         self.map.ui.camera_size = (40 * tile_width, 20 * tile_height)
         self.dispatcher.register(self.map)

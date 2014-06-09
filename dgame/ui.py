@@ -1,7 +1,7 @@
 import pygame, os, random
 
 
-BIOMES_CONFIG = {
+_BIOMES_CONFIG = {
     'default': {
         'entrance': 'stone_stairs_up',
         'exit': 'stone_stairs_down',
@@ -11,6 +11,8 @@ BIOMES_CONFIG = {
         'floor': ['floor_vines1', 'floor_vines2', 'floor_vines3', 'floor_vines4', 'floor_vines5', 'floor_vines6'],
     },
 }
+
+_Biomes = {}
 
 class SpriteSheet(dict):
 
@@ -39,11 +41,17 @@ class Biome(object):
     def wall(self):
         return self._sheet[self._config['wall'][random.randrange(0, len(self._config['wall']))]]
 
-Biomes = {}
-
 def init_biomes():
-    for name, config in BIOMES_CONFIG.iteritems():
-        Biomes[name] = Biome(name, config)
+    for name, config in _BIOMES_CONFIG.iteritems():
+        _Biomes[name] = Biome(name, config)
+
+
+def get_biome(name = None):
+    if name == None and not '_current' in _Biomes:
+        _Biomes['_current'] = _Biomes['default']
+    elif name != None:
+        _Biomes['_current'] = _Biomes[name]
+    return _Biomes['_current']
 
 
 class MapUi(pygame.Surface):
@@ -93,16 +101,19 @@ class MapUi(pygame.Surface):
     def render(self):
         for column in self.tiles:
             for tile in column:
-                self.blit(tile.ui, (tile.position[0] * self.tile_size[0], tile.position[1] * self.tile_size[1]))
+                self.blit(tile.ui.background, (tile.position[0] * self.tile_size[0], tile.position[1] * self.tile_size[1]))
         self.render_camera()
 
     def render_camera(self):
         self.camera = self.subsurface(pygame.Rect(self.camera_position, self.camera_size))
 
 
-class TileUi(pygame.Surface):
+class TileUi(pygame.sprite.Sprite):
 
-    def __init__(self, size):
-        self.width = size[0]
-        self.height = size[1]
-        self.size = size
+    def __init__(self):
+        super(TileUi, self).__init__()
+        self.background = get_biome().unpassable
+
+
+class CreatureUi(pygame.Surface):
+    pass

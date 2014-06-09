@@ -1,4 +1,3 @@
-from dgame.ui import Biomes
 import random, logging
 
 SMALL_ROOM = [(5, 5), (9, 9)]
@@ -49,9 +48,9 @@ class MapGenerator(object):
         for x, y in room_pos:
             # logging.debug('writing tile {}/{}'.format(x, y))
             if x == start_pos[0] or y == start_pos[1] or x == start_pos[0] + size[0] - 1 or y == start_pos[1] + size[1] - 1:
-                self.map.tiles[x][y].ui = self.biome.wall
+                self.map.tiles[x][y].ui.background = self.biome.wall
             else:
-                self.map.tiles[x][y].ui = self.biome.passable
+                self.map.tiles[x][y].ui.background = self.biome.passable
         return room_pos
 
 
