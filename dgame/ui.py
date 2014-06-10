@@ -1,18 +1,21 @@
-import pygame, os, random
+# coding=utf-8
+import pygame, os, random, dgame
 
-
-_BIOMES_CONFIG = {
-    'default': {
-        'entrance': 'stone_stairs_up',
-        'exit': 'stone_stairs_down',
-        'unpassable': ['stone_dark0'],
-        'passable': ['floor_vines0'],
-        'wall': ['wall_vines0', 'wall_vines1', 'wall_vines2', 'wall_vines3', 'wall_vines4', 'wall_vines5', 'wall_vines6'],
-        'floor': ['floor_vines1', 'floor_vines2', 'floor_vines3', 'floor_vines4', 'floor_vines5', 'floor_vines6'],
-    },
-}
+current_biome = None
 
 _Biomes = {}
+
+def init_biomes(c):
+    for name, config in c.iteritems():
+        dgame.ui._Biomes[name] = Biome(name, config)
+    dgame.ui.current_biome = _Biomes['default']
+
+
+def select_biome(name):
+    if name in _Biomes:
+        dgame.ui.current_biome = dgame.ui._Biomes[name]
+    return dgame.ui.current_biome
+
 
 class SpriteSheet(dict):
 
@@ -40,18 +43,6 @@ class Biome(object):
     @property
     def wall(self):
         return self._sheet[self._config['wall'][random.randrange(0, len(self._config['wall']))]]
-
-def init_biomes():
-    for name, config in _BIOMES_CONFIG.iteritems():
-        _Biomes[name] = Biome(name, config)
-
-
-def get_biome(name = None):
-    if name == None and not '_current' in _Biomes:
-        _Biomes['_current'] = _Biomes['default']
-    elif name != None:
-        _Biomes['_current'] = _Biomes[name]
-    return _Biomes['_current']
 
 
 class MapUi(pygame.Surface):
@@ -108,11 +99,11 @@ class MapUi(pygame.Surface):
         self.camera = self.subsurface(pygame.Rect(self.camera_position, self.camera_size))
 
 
-class TileUi(pygame.sprite.Sprite):
+class TileUi(pygame.sprite.DirtySprite):
 
     def __init__(self):
         super(TileUi, self).__init__()
-        self.background = get_biome().unpassable
+        self.background = current_biome.unpassable
 
 
 class CreatureUi(pygame.Surface):

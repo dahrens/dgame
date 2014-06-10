@@ -1,11 +1,9 @@
+# coding=utf-8
 import random, logging
 
 SMALL_ROOM = [(5, 5), (9, 9)]
 MEDIUM_ROOM = [(10, 10), (15, 15)]
 LARGE_ROOM = [(16, 16), (20, 20)]
-
-POS_OPEN = 1
-POS_CLOSED = 2
 
 class MapGenerator(object):
 

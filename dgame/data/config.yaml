@@ -1,0 +1,14 @@
+gfx:
+  resolution: !!python/tuple [1024, 768]
+  fullscreen: False
+ui:
+  tiles:
+    size: !!python/tuple [32,32]
+  biomes:
+    default:
+      entrance: [stone_stairs_up]
+      exit: [stone_stairs_down]
+      unpassable: [stone_dark0]
+      passable: [floor_vines0]
+      wall: [wall_vines0, wall_vines1, wall_vines2, wall_vines3, wall_vines4, wall_vines5, wall_vines6]
+      floor: [floor_vines1, floor_vines2, floor_vines3, floor_vines4, floor_vines5, floor_vines6]
