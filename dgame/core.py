@@ -82,7 +82,7 @@ class Biome(object):
         return self._sheet[self._config['wall'][random.randrange(0, len(self._config['wall']))]]
 
 
-class Map(pygame.sprite.DirtySprite, ActorMixin):
+class Map(pygame.sprite.Sprite, ActorMixin):
     '''The game map. UI and logic combine :-/'''
 
     SCROLL_UP = 1
@@ -109,7 +109,7 @@ class Map(pygame.sprite.DirtySprite, ActorMixin):
         self.tiles = [[self._default_tile(x, y) for y in range(self.size_in_tiles[1])] for x in range(self.size_in_tiles[0])]
         self.scroll_speed = 16
 
-        self.group = pygame.sprite.LayeredDirty(chain.from_iterable(self.tiles))
+        self.group = pygame.sprite.LayeredDirty(chain.from_iterable(self.tiles), _use_update = True)
         self.image = self.surface.subsurface(self.camera_rect)
         self.rect = rect
 
@@ -141,6 +141,7 @@ class Map(pygame.sprite.DirtySprite, ActorMixin):
         and self.camera_rect.x + self.scroll_speed <= self.width - self.camera_rect.width:
                 self.camera_rect.x += self.scroll_speed
         else: return False
+        self.dirty = 1
         return True
 
     def update(self, *arg):
@@ -167,8 +168,15 @@ class Tile(pygame.sprite.DirtySprite):
         super(Tile, self).__init__()
         self.pos_map = pos_map
         self.rect = pos_surface
+        self.last_image = background
         self.image = background
         self.state = state
+        self.dirty = 1
+
+    def update(self, *args, **kwargs):
+        if self.last_image != self.image:
+            self.dirty = 1
+            self.last_image = self.image
 
 
 class FpsLayer(pygame.sprite.Sprite):
@@ -212,13 +220,13 @@ class Game(ActorMixin):
 
         self.font = pygame.font.SysFont('mono', 20, bold = True)
         self.clock = pygame.time.Clock()
-        self.fps = 30
+        self.fps = self.cfg['gfx']['max_fps']
         self.playtime = 0.0
 
         self.biomes = self.init_biomes(self.cfg['ui']['biomes'])
         self.dispatcher = EventDispatcher()
         self.map = Map(biome = self.biomes['default'],
-                       size_in_tiles = (100, 100),
+                       size_in_tiles = (128, 128),
                        tile_size = self.cfg['ui']['tiles']['size'],
                        rect = pygame.Rect((0, 0), (self.width, self.height - 200)))
         self.map_generator = MapGenerator()
@@ -228,7 +236,7 @@ class Game(ActorMixin):
         self.dispatcher.register(self)
         self.dispatcher.register(self.map)
 
-        self.ui_group = pygame.sprite.RenderUpdates(self.map, self.fps_ui)
+        self.ui_group = pygame.sprite.LayeredUpdates(self.map, self.fps_ui)
 
     def handle_key(self, event):
         if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:

@@ -1,6 +1,7 @@
 gfx:
   resolution: !!python/tuple [1024, 768]
   fullscreen: False
+  max_fps: 0
 ui:
   tiles:
     size: !!python/tuple [32,32]

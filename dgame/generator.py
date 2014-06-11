@@ -47,6 +47,7 @@ class MapGenerator(object):
                 self.map.tiles[x][y].image = self.map.biome.wall
             else:
                 self.map.tiles[x][y].image = self.map.biome.passable
+            self.map.tiles[x][y].dirty = 1
         return room_pos
 
 
