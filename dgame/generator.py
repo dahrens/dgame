@@ -7,17 +7,14 @@ LARGE_ROOM = [(16, 16), (20, 20)]
 
 class MapGenerator(object):
 
-    def __init__(self, biome = None, size_in_tiles = (100, 100), seed = None, tile_size = (32, 32)):
-        self.biome = biome
-        self.size_in_tiles = size_in_tiles
-        self.tile_size = tile_size
+    def __init__(self, seed = None):
         if seed:
             random.seed(seed)
 
-    def run(self):
-        from dgame.core import Map
-        self.map = Map(self.biome, self.size_in_tiles, self.tile_size)
-        self.open_pos = self._get_pos_set((1, 1), (self.size_in_tiles[0] - 2, self.size_in_tiles[1] - 2))
+    def create(self, m):
+        self.map = m
+        logging.debug('generated maps tiles len: {}/{}'.format(len(self.map.tiles), len(self.map.tiles[0])))
+        self.open_pos = self._get_pos_set((1, 1), (self.map.size_in_tiles[0] - 2, self.map.size_in_tiles[1] - 2))
         self.close_pos = set()
         logging.debug('open_pos/close_pos: {}/{} {}/{}'.format(len(self.open_pos), len(self.close_pos), self.open_pos, self.close_pos))
         self.rooms = []
@@ -27,6 +24,7 @@ class MapGenerator(object):
                 self.rooms.append(room_positions)
             else:
                 logging.warning('can not find suitable place for another room.')
+        self.map.update()
         return self.map
 
     def gen_room(self, size_template = MEDIUM_ROOM):
@@ -44,11 +42,11 @@ class MapGenerator(object):
                 return False
         logging.debug('generate room at {} with size {}'.format(start_pos, size))
         for x, y in room_pos:
-            # logging.debug('writing tile {}/{}'.format(x, y))
+            logging.debug('writing tile {}/{}'.format(x, y))
             if x == start_pos[0] or y == start_pos[1] or x == start_pos[0] + size[0] - 1 or y == start_pos[1] + size[1] - 1:
-                self.map.tiles[x][y].ui.background = self.biome.wall
+                self.map.tiles[x][y].image = self.map.biome.wall
             else:
-                self.map.tiles[x][y].ui.background = self.biome.passable
+                self.map.tiles[x][y].image = self.map.biome.passable
         return room_pos
 
 
