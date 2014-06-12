@@ -92,6 +92,122 @@ class Biome(object):
 ZOOM_LEVELS = [0.25, 0.5, 1.0, 2.0, 4.0]
 
 
+class Viewport(object):
+
+    ZOOM_IN = 1
+    ZOOM_OUT = 2
+
+    def __init__(self, offset, size, tile_size, zoom_lvl = 1.0):
+        self._offset = self._x, self._y = offset
+        self._size = self._width, self._height = size
+        self._tile_size = self._tile_width, self._tile_height = tile_size
+        self.zoom_lvl = zoom_lvl
+
+    @property
+    def offset(self):
+        return self._offset
+
+    @offset.setter
+    def offset(self, v):
+        self._offset = self._x, self._y = v
+
+    @property
+    def x(self):
+        return self._x
+
+    @x.setter
+    def x(self, v):
+        self._offset[0] = self._x = v
+
+    @property
+    def y(self):
+        return self._y
+
+    @y.setter
+    def y(self, v):
+        self._offset[1] = self._y = v
+
+    @property
+    def size(self):
+        return self._size
+
+    @size.setter
+    def size(self, v):
+        self._size = self._width, self._height = v
+
+    @property
+    def width(self):
+        return self._width / self.tile_width
+
+    @width.setter
+    def width(self, v):
+        self._size[0] = self._width = v
+
+    @property
+    def height(self):
+        return self._height / self.tile_height
+
+    @height.setter
+    def height(self, v):
+        self._size[1] = self._height = v
+
+    @property
+    def tile_size(self):
+        return [self._tile_width * self.zoom_lvl, self._tile_height * self.zoom_lvl]
+
+    @tile_size.setter
+    def tile_size(self, v):
+        self._tile_size = self._tile_width, self._tile_height = v
+
+    @property
+    def tile_width(self):
+        return self._tile_width * self.zoom_lvl
+
+    @tile_width.setter
+    def tile_width(self, v):
+        self._tile_size[0] = self._tile_width = v
+
+    @property
+    def tile_height(self):
+        return self._tile_height * self.zoom_lvl
+
+    @tile_height.setter
+    def tile_height(self, v):
+        self._tile_size[1] = self._tile_height = v
+
+    @property
+    def x_min(self):
+        return int(math.floor(self.x))
+
+    @property
+    def x_max(self):
+        return int(math.ceil(self.x + (self.width)))
+
+    @property
+    def y_min(self):
+        return int(math.floor(self.y))
+
+    @property
+    def y_max(self):
+        return int(math.ceil(self.y + (self.height)))
+
+    def zoom(self, direction):
+        if direction == self.ZOOM_IN \
+        and self.zoom_lvl * 2 in ZOOM_LEVELS:
+                self.zoom_lvl *= 2.0
+        elif direction == self.ZOOM_OUT\
+        and self.zoom_lvl / 2 in ZOOM_LEVELS:
+                self.zoom_lvl /= 2.0
+        else: return False
+        return True
+
+    def blit_tile(self, image, tile):
+        image.blit(tile.zbg[self.zoom_lvl],
+                   pygame.Rect(((tile.x - self.x) * self.tile_width,
+                                (tile.y - self.y) * self.tile_height),
+                               (int(self.tile_width),
+                                int(self.tile_height))))
+
 class Camera(pygame.sprite.Sprite, ActorMixin):
 
     SCROLL_UP = 1
@@ -99,18 +215,7 @@ class Camera(pygame.sprite.Sprite, ActorMixin):
     SCROLL_LEFT = 3
     SCROLL_RIGHT = 4
 
-    ZOOM_IN = 5
-    ZOOM_OUT = 6
-
     key = True
-
-    class Viewport(object):
-
-        def __init__(self, x, y, w, h):
-            self.x = x
-            self.y = y
-            self.w = w
-            self.h = h
 
     def __init__(self, rect, env, offset = [0.0, 0.0]):
         super(Camera, self).__init__()
@@ -118,20 +223,12 @@ class Camera(pygame.sprite.Sprite, ActorMixin):
         self.rect = rect
         self.image = pygame.Surface(rect.size).convert()
         self.scroll_speed = 0.5
-        self.zoom = 1.0
-        self.viewport = self.Viewport(offset[0],
-                                 offset[1],
-                                 math.ceil(self.rect.width / self.env.tile_width * self.zoom),
-                                 math.ceil(self.rect.height / self.env.tile_height * self.zoom))
+        self.viewport = Viewport(offset, rect.size, env.tile_size)
 
     def update(self):
-        visible_tiles = self._get_visibile()
         self.image.fill((200, 200, 200))
-        for tile in visible_tiles:
-            self.image.blit(tile.zbg[self.zoom], pygame.Rect(((tile.x - self.viewport.x) * self.env.tile_width * self.zoom,
-                                                              (tile.y - self.viewport.y) * self.env.tile_height * self.zoom),
-                                                              (int(self.env.tile_width * self.zoom),
-                                                               int(self.env.tile_height * self.zoom))))
+        for tile in self._get_visibile():
+            self.viewport.blit_tile(self.image, tile)
 
     def handle_key(self, event):
         '''Handles all keyboard bound events.'''
@@ -146,9 +243,9 @@ class Camera(pygame.sprite.Sprite, ActorMixin):
         elif event.type == pygame.KEYDOWN and event.key == pygame.K_RIGHT:
             return self._scroll(self.SCROLL_RIGHT)
         elif event.type == pygame.KEYDOWN and event.key == pygame.K_KP_PLUS:
-            return self._zoom(self.ZOOM_IN)
+            return self.viewport.zoom(self.viewport.ZOOM_IN)
         elif event.type == pygame.KEYDOWN and event.key == pygame.K_KP_MINUS:
-            return self._zoom(self.ZOOM_OUT)
+            return self.viewport.zoom(self.viewport.ZOOM_OUT)
         else:
             return False
 
@@ -158,34 +255,22 @@ class Camera(pygame.sprite.Sprite, ActorMixin):
         and self.viewport.y - self.scroll_speed >= 0:
                 self.viewport.y -= self.scroll_speed
         elif direction == self.SCROLL_DOWN \
-        and self.viewport.y + self.scroll_speed <= self.env.height - self.viewport.h:
+        and self.viewport.y + self.scroll_speed <= self.env.height - self.viewport.height:
                 self.viewport.y += self.scroll_speed
         elif direction == self.SCROLL_LEFT \
         and self.viewport.x - self.scroll_speed >= 0:
                 self.viewport.x -= self.scroll_speed
         elif direction == self.SCROLL_RIGHT \
-        and self.viewport.x + self.scroll_speed <= self.env.width - self.viewport.w:
+        and self.viewport.x + self.scroll_speed <= self.env.width - self.viewport.width:
                 self.viewport.x += self.scroll_speed
-        else: return False
-        return True
-
-    def _zoom(self, direction):
-        if direction == self.ZOOM_IN \
-        and self.zoom * 2 in ZOOM_LEVELS:
-                self.zoom *= 2.0
-        elif direction == self.ZOOM_OUT\
-        and self.zoom / 2 in ZOOM_LEVELS:
-                self.zoom /= 2.0
         else: return False
         return True
 
     def _get_visibile(self):
         v = []
-        for x in range(int(math.floor(self.viewport.x)), int(math.ceil(self.viewport.x + (self.viewport.w / self.zoom)))):
-            for y in range(int(math.floor(self.viewport.y)), int(math.ceil(self.viewport.y + (self.viewport.h / self.zoom)))):
-                try:
-                    v.append(self.env.tiles[x][y])
-                except IndexError: pass
+        for x in range(self.viewport.x_min, self.viewport.x_max):
+            for y in range(self.viewport.y_min, self.viewport.y_max):
+                v.append(self.env.tiles[x][y])
         return v
 
 
