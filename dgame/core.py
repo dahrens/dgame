@@ -2,12 +2,12 @@
 '''
 dgame is just a playground for python and pygame.
 '''
+from __future__ import division
 import pygame
 import sys, os, logging, math
 import collections, random, yaml
-from itertools import chain
 from dgame.event import EventDispatcher, ActorMixin
-from dgame.generator import MapGenerator
+from dgame.generator import EnvironmentGenerator
 
 PROFILE = False
 DEBUG = False
@@ -67,6 +67,9 @@ class Biome(object):
     def __init__(self, name, config):
         self._name = name
         self._config = config
+        self._config['_all'] = []
+        for imgs in self._config.itervalues():
+            self._config['_all'].extend(imgs)
         self._sheet = SpriteDict(['data', 'sprites', 'biomes', name])
 
     @property
@@ -81,102 +84,137 @@ class Biome(object):
     def wall(self):
         return self._sheet[self._config['wall'][random.randrange(0, len(self._config['wall']))]]
 
+    @property
+    def rand(self):
+        return self._sheet[self._config['_all'][random.randrange(0, len(self._config['_all']))]]
 
-class Map(pygame.sprite.Sprite, ActorMixin):
-    '''The game map. UI and logic combine :-/'''
+
+ZOOM_LEVELS = [0.25, 0.5, 1.0, 2.0, 4.0]
+
+
+class Camera(pygame.sprite.Sprite, ActorMixin):
 
     SCROLL_UP = 1
     SCROLL_DOWN = 2
     SCROLL_LEFT = 3
     SCROLL_RIGHT = 4
 
+    ZOOM_IN = 5
+    ZOOM_OUT = 6
+
     key = True
 
-    def __init__(self, biome = None, size_in_tiles = (128, 128), tile_size = (32, 32), rect = pygame.Rect((0, 0), (20 * 32, 20 * 32)), position_camera = (0, 0)):
-        super(Map, self).__init__()
-        self.biome = biome
-        self.size_in_tiles = size_in_tiles
-        self.tile_size = tile_size
-        self.width = size_in_tiles[0] * tile_size[0]
-        self.height = size_in_tiles[1] * tile_size[1]
+    class Viewport(object):
+
+        def __init__(self, x, y, w, h):
+            self.x = x
+            self.y = y
+            self.w = w
+            self.h = h
+
+    def __init__(self, rect, env, offset = [0.0, 0.0]):
+        super(Camera, self).__init__()
+        self.env = env
         self.rect = rect
-        self.camera_rect = pygame.Rect(position_camera, self.rect.size)
+        self.image = pygame.Surface(rect.size).convert()
+        self.scroll_speed = 0.5
+        self.zoom = 1.0
+        self.viewport = self.Viewport(offset[0],
+                                 offset[1],
+                                 math.ceil(self.rect.width / self.env.tile_width * self.zoom),
+                                 math.ceil(self.rect.height / self.env.tile_height * self.zoom))
 
-        self.surface = pygame.Surface((self.width, self.height))
-        self.surface.fill((200, 200, 200))
-        self.background = self.surface.copy()
-
-        self.tiles = [[self._default_tile(x, y) for y in range(self.size_in_tiles[1])] for x in range(self.size_in_tiles[0])]
-        self.scroll_speed = 16
-
-        self.group = pygame.sprite.LayeredDirty(chain.from_iterable(self.tiles), _use_update = True)
-        self.image = self.surface.subsurface(self.camera_rect)
-        self.rect = rect
+    def update(self):
+        visible_tiles = self._get_visibile()
+        self.image.fill((200, 200, 200))
+        for tile in visible_tiles:
+            self.image.blit(tile.zbg[self.zoom], pygame.Rect(((tile.x - self.viewport.x) * self.env.tile_width * self.zoom,
+                                                              (tile.y - self.viewport.y) * self.env.tile_height * self.zoom),
+                                                              (int(self.env.tile_width * self.zoom),
+                                                               int(self.env.tile_height * self.zoom))))
 
     def handle_key(self, event):
         '''Handles all keyboard bound events.'''
         if event.type == pygame.KEYDOWN and event.key == pygame.K_UP:
-            return self.scroll(self.SCROLL_UP)
+            return self._scroll(self.SCROLL_UP)
         elif event.type == pygame.KEYDOWN and event.key == pygame.K_DOWN:
-            return self.scroll(self.SCROLL_DOWN)
+            return self._scroll(self.SCROLL_DOWN)
         elif event.type == pygame.KEYDOWN and event.key == pygame.K_LEFT:
-            return self.scroll(self.SCROLL_LEFT)
+            return self._scroll(self.SCROLL_LEFT)
         elif event.type == pygame.KEYDOWN and event.key == pygame.K_RIGHT:
-            return self.scroll(self.SCROLL_RIGHT)
+            return self._scroll(self.SCROLL_RIGHT)
+        elif event.type == pygame.KEYDOWN and event.key == pygame.K_RIGHT:
+            return self._scroll(self.SCROLL_RIGHT)
+        elif event.type == pygame.KEYDOWN and event.key == pygame.K_KP_PLUS:
+            return self._zoom(self.ZOOM_IN)
+        elif event.type == pygame.KEYDOWN and event.key == pygame.K_KP_MINUS:
+            return self._zoom(self.ZOOM_OUT)
         else:
             return False
 
-    def scroll(self, direction):
+    def _scroll(self, direction):
         '''Scrolls the map self.scroll_speed pixels in the given direction'''
         if direction == self.SCROLL_UP \
-        and self.camera_rect.y - self.scroll_speed >= 0:
-                self.camera_rect.y -= self.scroll_speed
+        and self.viewport.y - self.scroll_speed >= 0:
+                self.viewport.y -= self.scroll_speed
         elif direction == self.SCROLL_DOWN \
-        and self.camera_rect.y + self.scroll_speed <= self.height - self.camera_rect.height:
-                self.camera_rect.y += self.scroll_speed
+        and self.viewport.y + self.scroll_speed <= self.env.height - self.viewport.h:
+                self.viewport.y += self.scroll_speed
         elif direction == self.SCROLL_LEFT \
-        and self.camera_rect.x - self.scroll_speed >= 0:
-                self.camera_rect.x -= self.scroll_speed
+        and self.viewport.x - self.scroll_speed >= 0:
+                self.viewport.x -= self.scroll_speed
         elif direction == self.SCROLL_RIGHT \
-        and self.camera_rect.x + self.scroll_speed <= self.width - self.camera_rect.width:
-                self.camera_rect.x += self.scroll_speed
+        and self.viewport.x + self.scroll_speed <= self.env.width - self.viewport.w:
+                self.viewport.x += self.scroll_speed
         else: return False
-        self.dirty = 1
         return True
 
-    def update(self, *arg):
-        self.group.clear(self.surface, self.background)
-        self.group.update()
-        self.group.set_clip(self.camera_rect)
-        self.group.draw(self.surface)
-        self.image = self.surface.subsurface(pygame.Rect(self.camera_rect))
+    def _zoom(self, direction):
+        if direction == self.ZOOM_IN \
+        and self.zoom * 2 in ZOOM_LEVELS:
+                self.zoom *= 2.0
+        elif direction == self.ZOOM_OUT\
+        and self.zoom / 2 in ZOOM_LEVELS:
+                self.zoom /= 2.0
+        else: return False
+        return True
+
+    def _get_visibile(self):
+        v = []
+        for x in range(int(math.floor(self.viewport.x)), int(math.ceil(self.viewport.x + (self.viewport.w / self.zoom)))):
+            for y in range(int(math.floor(self.viewport.y)), int(math.ceil(self.viewport.y + (self.viewport.h / self.zoom)))):
+                try:
+                    v.append(self.env.tiles[x][y])
+                except IndexError: pass
+        return v
+
+
+class Environment(object):
+
+    def __init__(self, size, tile_size, biome):
+        self.size = self.width, self.height = size
+        self.tile_size = self.tile_width, self.tile_height = tile_size
+        self.biome = biome
+        self.tiles = [[self._default_tile(x, y) for y in range(self.height)] for x in range(self.width)]
 
     def _default_tile(self, x, y):
-        return Tile((x, y),
-                    pygame.Rect((x * self.tile_size[0], y * self.tile_size[1]),
-                                self.tile_size),
+        return Tile(pygame.Rect((x, y), (1, 1)),
                     self.biome.unpassable)
 
 
-class Tile(pygame.sprite.DirtySprite):
-    '''One tile of the map.'''
+class Tile(pygame.Rect):
 
-    STATE_PASSABLE = 1
-    STATE_UNPASSABLE = 2
+    def __init__(self, rect, bg):
+        super(Tile, self).__init__(rect)
+        self.bg = bg
+        self.zbg = {}
+        self.set_bg(bg)
 
-    def __init__(self, pos_map, pos_surface, background = None, state = STATE_UNPASSABLE):
-        super(Tile, self).__init__()
-        self.pos_map = pos_map
-        self.rect = pos_surface
-        self.last_image = background
-        self.image = background
-        self.state = state
-        self.dirty = 1
-
-    def update(self, *args, **kwargs):
-        if self.last_image != self.image:
-            self.dirty = 1
-            self.last_image = self.image
+    def set_bg(self, bg):
+        self.bg = bg
+        for zl in ZOOM_LEVELS:
+            self.zbg[zl] = pygame.transform.scale(bg, (int(self.bg.get_rect().width * zl),
+                                                       int(self.bg.get_rect().height * zl)))
 
 
 class FpsLayer(pygame.sprite.Sprite):
@@ -225,18 +263,19 @@ class Game(ActorMixin):
 
         self.biomes = self.init_biomes(self.cfg['ui']['biomes'])
         self.dispatcher = EventDispatcher()
-        self.map = Map(biome = self.biomes['default'],
-                       size_in_tiles = (128, 128),
-                       tile_size = self.cfg['ui']['tiles']['size'],
-                       rect = pygame.Rect((0, 0), (self.width, self.height - 200)))
-        self.map_generator = MapGenerator()
-        self.map = self.map_generator.create(self.map)
+        self.env = Environment(biome = self.biomes['default'],
+                       size = (128, 128),
+                       tile_size = self.cfg['ui']['tiles']['size'])
+        self.env_generator = EnvironmentGenerator()
+        self.env = self.env_generator.create(self.env)
+        self.camera = Camera(pygame.Rect((0, 0), (self.width, self.height - 200)), self.env)
+
         self.fps_ui = FpsLayer(self.font, self.clock, (self.width - 150, self.height - 30))
 
         self.dispatcher.register(self)
-        self.dispatcher.register(self.map)
+        self.dispatcher.register(self.camera)
 
-        self.ui_group = pygame.sprite.LayeredUpdates(self.map, self.fps_ui)
+        self.ui_group = pygame.sprite.LayeredUpdates(self.camera, self.fps_ui)
 
     def handle_key(self, event):
         if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
@@ -245,7 +284,7 @@ class Game(ActorMixin):
 
     def run(self):
         running = True
-        pygame.key.set_repeat(10, 10)
+        pygame.key.set_repeat(100, 10)
         while running:
             for event in pygame.event.get():
                 running = self.dispatcher.dispatch(event)
