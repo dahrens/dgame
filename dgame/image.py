@@ -1,4 +1,7 @@
 # coding=utf-8
+'''
+Read images from data, for blitting. Handles scaling the images for zoom in and out.
+'''
 import pygame
 import os, random
 

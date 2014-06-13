@@ -1,4 +1,5 @@
 # coding=utf-8
+'''The event module handles the incoming input and dispatches it to the actors'''
 import pygame
 
 

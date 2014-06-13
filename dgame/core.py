@@ -1,5 +1,7 @@
 # coding=utf-8
 '''
+The core components of the game.
+
 dgame is just a playground for python and pygame.
 '''
 import pygame
@@ -46,6 +48,7 @@ class Configuration(dict):
 
 
 class Player(object):
+    '''The player knows about its heros and is an actor.'''
 
     def __init__(self, heros):
         self.heros = heros
@@ -63,7 +66,9 @@ class Player(object):
     def move_active_hero_right(self):
         self.active_hero.move(Creature.MOVE_RIGHT)
 
+
 class Creature(object):
+    '''A creature can move around in the environment'''
 
     MOVE_UP = 1
     MOVE_DOWN = 2
@@ -97,7 +102,9 @@ class Creature(object):
         if new_p in nb:
             self.position = new_p
 
+
 class Environment(object):
+    '''The environment knows about the map and there creatures in it.'''
 
     def __init__(self, biome, config, map_size_name):
         self.config = config

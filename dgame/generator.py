@@ -1,4 +1,7 @@
 # coding=utf-8
+'''
+Generating the environment. Needs refactoring.
+'''
 import random, logging
 
 

@@ -1,10 +1,14 @@
 # coding=utf-8
+'''
+The ui module includes components that are visible in the game.
+'''
 from __future__ import division
 import pygame
 import math
 
 
 class Viewport(object):
+    '''The viewport of the main camera object that shows the map.'''
 
     ZOOM_IN = 1
     ZOOM_OUT = 2
@@ -123,6 +127,7 @@ class Viewport(object):
                 self.zoom_level = self.zoom_levels[i - 1]
 
     def blit(self, surface, tile):
+        '''Blit an image on the viewport.'''
         surface.blit(tile.image[self.zoom_level],
                      pygame.Rect(((tile.x - self.x) * self.tile_width,
                                   (tile.y - self.y) * self.tile_height),
@@ -131,6 +136,7 @@ class Viewport(object):
 
 
 class Camera(pygame.sprite.Sprite):
+    '''The camera shows a part of the current game environment aka map.'''
 
     def __init__(self, rect, env, offset = [0.0, 0.0], zoom_levels = [1.0], zoom_level = 1.0, scroll_speed = 0.5):
         super(Camera, self).__init__()
@@ -148,6 +154,16 @@ class Camera(pygame.sprite.Sprite):
         for pos in self.env.creatures:
             if pos in visible_position:
                 self.viewport.blit(self.image, self.env.creatures[pos].entity)
+
+    def _get_visibile(self):
+        '''Get the current visible tiles.'''
+        v = []
+        x_max = self.viewport.x_max if self.viewport.x_max <= self.env.width else self.env.width
+        y_max = self.viewport.y_max if self.viewport.y_max <= self.env.height else self.env.height
+        for x in range(self.viewport.x_min, x_max):
+            for y in range(self.viewport.y_min, y_max):
+                v.append(self.env.tiles[x][y])
+        return v
 
     def zoom_in(self):
         self.viewport.zoom(self.viewport.ZOOM_IN)
@@ -167,15 +183,6 @@ class Camera(pygame.sprite.Sprite):
     def scroll_right(self):
         self.viewport.scroll(self.viewport.SCROLL_RIGHT)
 
-    def _get_visibile(self):
-        v = []
-        x_max = self.viewport.x_max if self.viewport.x_max <= self.env.width else self.env.width
-        y_max = self.viewport.y_max if self.viewport.y_max <= self.env.height else self.env.height
-        for x in range(self.viewport.x_min, x_max):
-            for y in range(self.viewport.y_min, y_max):
-                v.append(self.env.tiles[x][y])
-        return v
-
 
 class FpsLayer(pygame.sprite.Sprite):
     '''Sprite to show the FPS'''
@@ -193,6 +200,7 @@ class FpsLayer(pygame.sprite.Sprite):
 
 
 class Entity(pygame.Rect):
+    '''An entity represents moving creatures on the map.'''
 
     def __init__(self, rect, image):
         super(Entity, self).__init__(rect)
@@ -200,6 +208,7 @@ class Entity(pygame.Rect):
 
 
 class Tile(pygame.Rect):
+    '''A tile is field on the map.'''
 
     STATE_PASSABLE = 1
     STATE_UNPASSABLE = 2
