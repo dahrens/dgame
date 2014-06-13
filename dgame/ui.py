@@ -2,7 +2,6 @@
 from __future__ import division
 import pygame
 import os, math, random
-from dgame.event import ActorMixin
 
 class SpriteDict(dict):
     '''
@@ -151,7 +150,7 @@ class Viewport(object):
         return int(math.ceil(self.y + (self.height)))
 
     def scroll(self, direction):
-        '''Scrolls the map self.scroll_speed pixels in the given direction'''
+        '''Move the viewport self.scroll_speed pixels in the given direction'''
         if direction == self.SCROLL_UP \
         and self.y - self.scroll_speed >= 0:
                 self._y -= self.scroll_speed
@@ -164,17 +163,14 @@ class Viewport(object):
         elif direction == self.SCROLL_RIGHT \
         and self.x + self.scroll_speed <= self.env_width - self.width:
                 self._x += self.scroll_speed
-        else: return False
-        return True
 
     def zoom(self, direction):
+        '''Zoom the viewport related to the defined zoom_levels in the given direction'''
         i = self.zoom_levels.index(self.zoom_level)
         if direction == self.ZOOM_IN and len(self.zoom_levels) > i + 1:
                 self.zoom_level = self.zoom_levels[i + 1]
         elif direction == self.ZOOM_OUT and 0 <= i - 1:
                 self.zoom_level = self.zoom_levels[i - 1]
-        else: return False
-        return True
 
     def blit_tile(self, image, tile):
         image.blit(tile.bg[self.zoom_level],
@@ -183,9 +179,7 @@ class Viewport(object):
                                (int(self.tile_width),
                                 int(self.tile_height))))
 
-class Camera(pygame.sprite.Sprite, ActorMixin):
-
-    key = True
+class Camera(pygame.sprite.Sprite):
 
     def __init__(self, rect, env, offset = [0.0, 0.0], zoom_levels = [1.0], zoom_level = 1.0, scroll_speed = 0.5):
         super(Camera, self).__init__()
@@ -199,24 +193,23 @@ class Camera(pygame.sprite.Sprite, ActorMixin):
         for tile in self._get_visibile():
             self.viewport.blit_tile(self.image, tile)
 
-    def handle_key(self, event):
-        '''Handles all keyboard bound events.'''
-        if event.type == pygame.KEYDOWN and event.key == pygame.K_UP:
-            return self.viewport.scroll(self.viewport.SCROLL_UP)
-        elif event.type == pygame.KEYDOWN and event.key == pygame.K_DOWN:
-            return self.viewport.scroll(self.viewport.SCROLL_DOWN)
-        elif event.type == pygame.KEYDOWN and event.key == pygame.K_LEFT:
-            return self.viewport.scroll(self.viewport.SCROLL_LEFT)
-        elif event.type == pygame.KEYDOWN and event.key == pygame.K_RIGHT:
-            return self.viewport.scroll(self.viewport.SCROLL_RIGHT)
-        elif event.type == pygame.KEYDOWN and event.key == pygame.K_RIGHT:
-            return self.viewport.scroll(self.viewport.SCROLL_RIGHT)
-        elif event.type == pygame.KEYDOWN and event.key == pygame.K_KP_PLUS:
-            return self.viewport.zoom(self.viewport.ZOOM_IN)
-        elif event.type == pygame.KEYDOWN and event.key == pygame.K_KP_MINUS:
-            return self.viewport.zoom(self.viewport.ZOOM_OUT)
-        else:
-            return False
+    def zoom_in(self):
+        self.viewport.zoom(self.viewport.ZOOM_IN)
+
+    def zoom_out(self):
+        self.viewport.zoom(self.viewport.ZOOM_OUT)
+
+    def scroll_up(self):
+        self.viewport.scroll(self.viewport.SCROLL_UP)
+
+    def scroll_down(self):
+        self.viewport.scroll(self.viewport.SCROLL_DOWN)
+
+    def scroll_left(self):
+        self.viewport.scroll(self.viewport.SCROLL_LEFT)
+
+    def scroll_right(self):
+        self.viewport.scroll(self.viewport.SCROLL_RIGHT)
 
     def _get_visibile(self):
         v = []

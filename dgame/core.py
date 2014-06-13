@@ -5,7 +5,7 @@ dgame is just a playground for python and pygame.
 import pygame
 import sys, os, logging
 import collections, yaml
-from dgame.event import EventDispatcher, ActorMixin
+from dgame.event import EventDispatcher
 from dgame.ui import Camera, Biome, Tile, FpsLayer
 from dgame.generator import EnvironmentGenerator
 
@@ -57,14 +57,12 @@ class Environment(object):
                     self.biome.unpassable)
 
 
-class Game(ActorMixin):
+class Game():
     '''Currently the launcher.
 
     TODO: seperate game from launch process, to allow saving.
 
     '''
-
-    key = True
 
     def __init__(self):
         pygame.init()
@@ -87,7 +85,6 @@ class Game(ActorMixin):
         self.playtime = 0.0
 
         self.biomes = self.init_biomes()
-        self.dispatcher = EventDispatcher()
         self.env_generator = EnvironmentGenerator()
         self.env = self.env_generator.create(Environment(biome = self.biomes['default'],
                                                          size = self.cfg['environment']['map_size']['medium'],
@@ -97,18 +94,15 @@ class Game(ActorMixin):
                              zoom_levels = self.cfg['ui']['camera']['zoom_levels'],
                              zoom_level = self.cfg['ui']['camera']['zoom_level'],
                              scroll_speed = self.cfg['ui']['camera']['scroll_speed'])
-
         self.fps_ui = FpsLayer(self.font, self.clock, (self.width - 150, self.height - 30))
 
-        self.dispatcher.register(self)
-        self.dispatcher.register(self.camera)
+        self.dispatcher = EventDispatcher(self.cfg['controls'], {'camera': self.camera,
+                                                                 'game': self})
 
         self.ui_group = pygame.sprite.LayeredUpdates(self.camera, self.fps_ui)
 
-    def handle_key(self, event):
-        if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-            pygame.event.post(pygame.event.Event(pygame.QUIT))
-            return True
+    def quit(self):
+        pygame.event.post(pygame.event.Event(pygame.QUIT))
 
     def run(self):
         running = True

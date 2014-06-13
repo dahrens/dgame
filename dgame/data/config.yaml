@@ -2,6 +2,16 @@ gfx:
   resolution: [1024, 768]
   fullscreen: False
   max_fps: 0
+controls:
+  camera:
+    zoom_in: [K_KP_PLUS]
+    zoom_out: [K_KP_MINUS]
+    scroll_up: [K_UP]
+    scroll_down: [K_DOWN]
+    scroll_left: [K_LEFT]
+    scroll_right: [K_RIGHT]
+  game:
+    quit: [K_ESCAPE]
 environment:
   tile_size: [32,32]
   map_size:
