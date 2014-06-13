@@ -89,19 +89,17 @@ class Biome(object):
         return self._sheet[self._config['_all'][random.randrange(0, len(self._config['_all']))]]
 
 
-ZOOM_LEVELS = [0.25, 0.5, 1.0, 2.0, 4.0]
-
-
 class Viewport(object):
 
     ZOOM_IN = 1
     ZOOM_OUT = 2
 
-    def __init__(self, offset, size, tile_size, zoom_lvl = 1.0):
+    def __init__(self, offset, size, tile_size, zoom_level = 1.0, zoom_levels = []):
         self._offset = self._x, self._y = offset
         self._size = self._width, self._height = size
         self._tile_size = self._tile_width, self._tile_height = tile_size
-        self.zoom_lvl = zoom_lvl
+        self.zoom_level = zoom_level
+        self.zoom_levels = zoom_levels
 
     @property
     def offset(self):
@@ -153,7 +151,7 @@ class Viewport(object):
 
     @property
     def tile_size(self):
-        return [self._tile_width * self.zoom_lvl, self._tile_height * self.zoom_lvl]
+        return [self._tile_width * self.zoom_level, self._tile_height * self.zoom_level]
 
     @tile_size.setter
     def tile_size(self, v):
@@ -161,7 +159,7 @@ class Viewport(object):
 
     @property
     def tile_width(self):
-        return self._tile_width * self.zoom_lvl
+        return self._tile_width * self.zoom_level
 
     @tile_width.setter
     def tile_width(self, v):
@@ -169,7 +167,7 @@ class Viewport(object):
 
     @property
     def tile_height(self):
-        return self._tile_height * self.zoom_lvl
+        return self._tile_height * self.zoom_level
 
     @tile_height.setter
     def tile_height(self, v):
@@ -193,16 +191,16 @@ class Viewport(object):
 
     def zoom(self, direction):
         if direction == self.ZOOM_IN \
-        and self.zoom_lvl * 2 in ZOOM_LEVELS:
-                self.zoom_lvl *= 2.0
+        and self.zoom_level * 2 in self.zoom_levels:
+                self.zoom_level *= 2.0
         elif direction == self.ZOOM_OUT\
-        and self.zoom_lvl / 2 in ZOOM_LEVELS:
-                self.zoom_lvl /= 2.0
+        and self.zoom_level / 2 in self.zoom_levels:
+                self.zoom_level /= 2.0
         else: return False
         return True
 
     def blit_tile(self, image, tile):
-        image.blit(tile.zbg[self.zoom_lvl],
+        image.blit(tile.zbg[self.zoom_level],
                    pygame.Rect(((tile.x - self.x) * self.tile_width,
                                 (tile.y - self.y) * self.tile_height),
                                (int(self.tile_width),
@@ -217,13 +215,13 @@ class Camera(pygame.sprite.Sprite, ActorMixin):
 
     key = True
 
-    def __init__(self, rect, env, offset = [0.0, 0.0]):
+    def __init__(self, rect, env, offset = [0.0, 0.0], zoom_levels = [1.0], zoom_level = 1.0, scroll_speed = 0.5):
         super(Camera, self).__init__()
         self.env = env
         self.rect = rect
         self.image = pygame.Surface(rect.size).convert()
-        self.scroll_speed = 0.5
-        self.viewport = Viewport(offset, rect.size, env.tile_size)
+        self.scroll_speed = scroll_speed
+        self.viewport = Viewport(offset, rect.size, env.tile_size, zoom_level, zoom_levels)
 
     def update(self):
         self.image.fill((200, 200, 200))
@@ -297,7 +295,7 @@ class Tile(pygame.Rect):
 
     def set_bg(self, bg):
         self.bg = bg
-        for zl in ZOOM_LEVELS:
+        for zl in [0.25, 0.5, 1.0, 2.0, 4.0]:
             self.zbg[zl] = pygame.transform.scale(bg, (int(self.bg.get_rect().width * zl),
                                                        int(self.bg.get_rect().height * zl)))
 
@@ -348,12 +346,16 @@ class Game(ActorMixin):
 
         self.biomes = self.init_biomes(self.cfg['ui']['biomes'])
         self.dispatcher = EventDispatcher()
-        self.env = Environment(biome = self.biomes['default'],
-                       size = (128, 128),
-                       tile_size = self.cfg['ui']['tiles']['size'])
         self.env_generator = EnvironmentGenerator()
-        self.env = self.env_generator.create(self.env)
-        self.camera = Camera(pygame.Rect((0, 0), (self.width, self.height - 200)), self.env)
+        self.env = self.env_generator.create(Environment(biome = self.biomes['default'],
+                                                         size = self.cfg['environment']['map_size']['medium'],
+                                                         tile_size = self.cfg['environment']['tile_size']))
+        self.camera = Camera(pygame.Rect((0, 0),
+                                         (self.width, self.height - 200)),
+                             self.env,
+                             zoom_levels = self.cfg['ui']['camera']['zoom_levels'],
+                             zoom_level = self.cfg['ui']['camera']['zoom_level'],
+                             scroll_speed = self.cfg['ui']['camera']['scroll_speed'])
 
         self.fps_ui = FpsLayer(self.font, self.clock, (self.width - 150, self.height - 30))
 

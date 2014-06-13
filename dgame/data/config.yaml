@@ -2,9 +2,17 @@ gfx:
   resolution: !!python/tuple [1024, 768]
   fullscreen: False
   max_fps: 0
+environment:
+  tile_size: [32,32]
+  map_size:
+    small: [64,64]
+    medium: [128,128]
+    large: [256,256]
 ui:
-  tiles:
-    size: !!python/tuple [32,32]
+  camera:
+    zoom_levels: [0.25, 0.5, 1.0, 2.0, 4.0]
+    zoom_level: 1.0
+    scroll_speed: 0.5
   biomes:
     default:
       entrance: [stone_stairs_up]
