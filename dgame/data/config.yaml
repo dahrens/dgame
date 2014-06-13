@@ -2,7 +2,13 @@ gfx:
   resolution: [1024, 768]
   fullscreen: False
   max_fps: 0
+
 controls:
+  player:
+    move_active_hero_up: [K_w]
+    move_active_hero_down: [K_s]
+    move_active_hero_left: [K_a]
+    move_active_hero_right: [K_d]
   camera:
     zoom_in: [K_KP_PLUS]
     zoom_out: [K_KP_MINUS]
@@ -12,17 +18,24 @@ controls:
     scroll_right: [K_RIGHT]
   game:
     quit: [K_ESCAPE]
+
 environment:
   tile_size: [32,32]
   map_size:
     small: [64,64]
     medium: [128,128]
     large: [256,256]
+
 ui:
   camera:
     zoom_levels: [0.5, 0.625, 0.75, 0.875, 1.0, 1.125, 1.25, 1.375, 1.5, 1.625, 1.75, 1.875, 2.0]
     zoom_level: 1.0
     scroll_speed: 0.5
+
+image:
+  creatures:
+    klara:
+      static: ['schaf']
   biomes:
     default:
       entrance: [stone_stairs_up]

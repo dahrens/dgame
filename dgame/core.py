@@ -6,7 +6,8 @@ import pygame
 import sys, os, logging
 import collections, yaml
 from dgame.event import EventDispatcher
-from dgame.ui import Camera, Biome, Tile, FpsLayer
+from dgame.ui import Camera, Tile, Entity, FpsLayer
+from dgame.image import Biome, CreatureSheet
 from dgame.generator import EnvironmentGenerator
 
 PROFILE = False
@@ -44,6 +45,58 @@ class Configuration(dict):
         return d
 
 
+class Player(object):
+
+    def __init__(self, heros):
+        self.heros = heros
+        self.active_hero = heros[0]
+
+    def move_active_hero_up(self):
+        self.active_hero.move(Creature.MOVE_UP)
+
+    def move_active_hero_down(self):
+        self.active_hero.move(Creature.MOVE_DOWN)
+
+    def move_active_hero_left(self):
+        self.active_hero.move(Creature.MOVE_LEFT)
+
+    def move_active_hero_right(self):
+        self.active_hero.move(Creature.MOVE_RIGHT)
+
+class Creature(object):
+
+    MOVE_UP = 1
+    MOVE_DOWN = 2
+    MOVE_LEFT = 3
+    MOVE_RIGHT = 4
+
+    def __init__(self, creature_sheet = 'klara'):
+        self.creature_sheet = creature_sheet
+        self.env = None
+        self.entity = Entity(pygame.Rect((0, 0), (1, 1)),
+                             self.creature_sheet.static)
+
+    @property
+    def position(self):
+        return self.entity.topleft
+
+    @position.setter
+    def position(self, v):
+        self.entity.topleft = v
+
+    def move(self, direction):
+        nb = self.env.get_passable_neighbours(self.position)
+        if direction == self.MOVE_UP:
+            new_p = self.position[0], self.position[1] - 1
+        elif direction == self.MOVE_DOWN:
+            new_p = self.position[0], self.position[1] + 1
+        elif direction == self.MOVE_LEFT:
+            new_p = self.position[0] - 1, self.position[1]
+        elif direction == self.MOVE_RIGHT:
+            new_p = self.position[0] + 1, self.position[1]
+        if new_p in nb:
+            self.position = new_p
+
 class Environment(object):
 
     def __init__(self, size, tile_size, biome):
@@ -51,10 +104,22 @@ class Environment(object):
         self.tile_size = self.tile_width, self.tile_height = tile_size
         self.biome = biome
         self.tiles = [[self._default_tile(x, y) for y in range(self.height)] for x in range(self.width)]
+        self.creatures = {}
 
     def _default_tile(self, x, y):
         return Tile(pygame.Rect((x, y), (1, 1)),
                     self.biome.unpassable)
+
+    def get_passable_neighbours(self, position):
+        n = [(position[0] - 1, position[1]),
+             (position[0] + 1, position[1]),
+             (position[0], position[1] - 1),
+             (position[0], position[1] + 1)]
+        pn = []
+        for x, y in n:
+            if self.tiles[x][y].state == Tile.STATE_PASSABLE:
+                pn.append((x, y))
+        return pn
 
 
 class Game():
@@ -85,10 +150,14 @@ class Game():
         self.playtime = 0.0
 
         self.biomes = self.init_biomes()
-        self.env_generator = EnvironmentGenerator()
+        self.creatures = self.init_creatures()
+        self.player = Player(heros = [Creature(self.creatures['klara'])])
+        self.env_generator = EnvironmentGenerator(seed = 'testing')
         self.env = self.env_generator.create(Environment(biome = self.biomes['default'],
-                                                         size = self.cfg['environment']['map_size']['medium'],
-                                                         tile_size = self.cfg['environment']['tile_size']))
+                                                         size = self.cfg['environment']['map_size']['small'],
+                                                         tile_size = self.cfg['environment']['tile_size']
+                                                         ),
+                                             player = self.player)
         self.camera = Camera(pygame.Rect((0, 0), (self.width, self.height - 256)),
                              self.env,
                              zoom_levels = self.cfg['ui']['camera']['zoom_levels'],
@@ -97,7 +166,8 @@ class Game():
         self.fps_ui = FpsLayer(self.font, self.clock, (self.width - 150, self.height - 30))
 
         self.dispatcher = EventDispatcher(self.cfg['controls'], {'camera': self.camera,
-                                                                 'game': self})
+                                                                 'game': self,
+                                                                 'player': self.player})
 
         self.ui_group = pygame.sprite.LayeredUpdates(self.camera, self.fps_ui)
 
@@ -118,8 +188,14 @@ class Game():
 
     def init_biomes(self):
         _b = {}
-        for name, config in self.cfg['ui']['biomes'].iteritems():
+        for name, config in self.cfg['image']['biomes'].iteritems():
             _b[name] = Biome(name, config, self.cfg['ui']['camera']['zoom_levels'])
+        return _b
+
+    def init_creatures(self):
+        _b = {}
+        for name, config in self.cfg['image']['creatures'].iteritems():
+            _b[name] = CreatureSheet(name, config, self.cfg['ui']['camera']['zoom_levels'])
         return _b
 
 
