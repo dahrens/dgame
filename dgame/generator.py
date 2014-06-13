@@ -1,13 +1,11 @@
 # coding=utf-8
 import random, logging
 
-SMALL_ROOM = [(5, 5), (9, 9)]
-MEDIUM_ROOM = [(10, 10), (15, 15)]
-LARGE_ROOM = [(16, 16), (20, 20)]
 
 class EnvironmentGenerator(object):
 
-    def __init__(self, seed = None):
+    def __init__(self, config, seed = None):
+        self.config = config
         if seed:
             random.seed(seed)
 
@@ -17,8 +15,21 @@ class EnvironmentGenerator(object):
         self.open_pos = self._get_pos_set((1, 1), (self.env.size[0] - 2, self.env.size[1] - 2))
         self.close_pos = set()
         self.rooms = []
-        for _ in range(1):
-            room_positions = self.gen_room(LARGE_ROOM)
+        cfg = self.config['map_config'][self.env.map_size_name]
+        for _ in range(cfg['large_rooms']):
+            room_positions = self.gen_room(self.config['large_room'])
+            if room_positions:
+                self.rooms.append(room_positions)
+            else:
+                logging.warning('can not find suitable place for another room.')
+        for _ in range(cfg['small_rooms']):
+            room_positions = self.gen_room(self.config['small_room'])
+            if room_positions:
+                self.rooms.append(room_positions)
+            else:
+                logging.warning('can not find suitable place for another room.')
+        for _ in range(cfg['medium_rooms']):
+            room_positions = self.gen_room(self.config['medium_room'])
             if room_positions:
                 self.rooms.append(room_positions)
             else:
@@ -29,7 +40,7 @@ class EnvironmentGenerator(object):
             self.env.creatures[hero.position] = hero
         return self.env
 
-    def gen_room(self, size_template = MEDIUM_ROOM):
+    def gen_room(self, size_template):
         size = (random.randrange(size_template[0][0], size_template[1][0]),
                 random.randrange(size_template[0][1], size_template[1][1]))
         logging.debug('generate room with size: {}'.format(size))

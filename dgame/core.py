@@ -99,9 +99,11 @@ class Creature(object):
 
 class Environment(object):
 
-    def __init__(self, size, tile_size, biome):
-        self.size = self.width, self.height = size
-        self.tile_size = self.tile_width, self.tile_height = tile_size
+    def __init__(self, biome, config, map_size_name):
+        self.config = config
+        self.map_size_name = map_size_name
+        self.size = self.width, self.height = config['map_size'][map_size_name]
+        self.tile_size = self.tile_width, self.tile_height = config['tile_size']
         self.biome = biome
         self.tiles = [[self._default_tile(x, y) for y in range(self.height)] for x in range(self.width)]
         self.creatures = {}
@@ -152,11 +154,10 @@ class Game():
         self.biomes = self.init_biomes()
         self.creatures = self.init_creatures()
         self.player = Player(heros = [Creature(self.creatures['klara'])])
-        self.env_generator = EnvironmentGenerator(seed = 'testing')
+        self.env_generator = EnvironmentGenerator(self.cfg['generator'], seed = 'testing')
         self.env = self.env_generator.create(Environment(biome = self.biomes['default'],
-                                                         size = self.cfg['environment']['map_size']['small'],
-                                                         tile_size = self.cfg['environment']['tile_size']
-                                                         ),
+                                                         config = self.cfg['environment'],
+                                                         map_size_name = 'small'),
                                              player = self.player)
         self.camera = Camera(pygame.Rect((0, 0), (self.width, self.height - 256)),
                              self.env,
