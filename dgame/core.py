@@ -106,6 +106,8 @@ class Viewport(object):
         self._tile_size = self._tile_width, self._tile_height = tile_size
         self.zoom_level = zoom_level
         self.zoom_levels = zoom_levels
+        self._orig_width = size[0] / tile_size[0]
+        self._orig_height = size[1] / tile_size[1]
 
     @property
     def offset(self):
@@ -117,7 +119,7 @@ class Viewport(object):
 
     @property
     def x(self):
-        return self._x
+        return self._x - ((self.width - self._orig_width) / 2)
 
     @x.setter
     def x(self, v):
@@ -125,7 +127,7 @@ class Viewport(object):
 
     @property
     def y(self):
-        return self._y
+        return self._y - ((self.height - self._orig_height) / 2)
 
     @y.setter
     def y(self, v):
@@ -196,12 +198,11 @@ class Viewport(object):
         return int(math.ceil(self.y + (self.height)))
 
     def zoom(self, direction):
-        if direction == self.ZOOM_IN \
-        and self.zoom_level * 2 in self.zoom_levels:
-                self.zoom_level *= 2.0
-        elif direction == self.ZOOM_OUT\
-        and self.zoom_level / 2 in self.zoom_levels:
-                self.zoom_level /= 2.0
+        i = self.zoom_levels.index(self.zoom_level)
+        if direction == self.ZOOM_IN and len(self.zoom_levels) > i + 1:
+                self.zoom_level = self.zoom_levels[i + 1]
+        elif direction == self.ZOOM_OUT and 0 <= i - 1:
+                self.zoom_level = self.zoom_levels[i - 1]
         else: return False
         return True
 
@@ -272,8 +273,10 @@ class Camera(pygame.sprite.Sprite, ActorMixin):
 
     def _get_visibile(self):
         v = []
-        for x in range(self.viewport.x_min, self.viewport.x_max):
-            for y in range(self.viewport.y_min, self.viewport.y_max):
+        x_max = self.viewport.x_max if self.viewport.x_max <= self.env.width else self.env.width
+        y_max = self.viewport.y_max if self.viewport.y_max <= self.env.height else self.env.height
+        for x in range(self.viewport.x_min, x_max):
+            for y in range(self.viewport.y_min, y_max):
                 v.append(self.env.tiles[x][y])
         return v
 
