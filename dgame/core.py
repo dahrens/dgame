@@ -54,23 +54,29 @@ class SpriteDict(dict):
 
     '''
 
-    def __init__(self, path, image_format = 'png'):
+    def __init__(self, path, image_format = 'png', zoom_levels = []):
         self.folder = os.path.join(*path)
         for f in os.listdir(self.folder):
             if f.endswith('.' + image_format):
-                self[f.split('.')[0]] = pygame.image.load(os.path.join(*[self.folder, f])).convert()
+                img = pygame.image.load(os.path.join(*[self.folder, f])).convert()
+                name = f.split('.')[0]
+                self[name] = {}
+                for zl in zoom_levels:
+                    z_size = (int(img.get_rect().width * zl), int(img.get_rect().height * zl))
+                    self[name][zl] = pygame.transform.scale(img, z_size)
 
 
 class Biome(object):
     '''A Biome is colletion of images, that are abstracted to their use'''
 
-    def __init__(self, name, config):
+    def __init__(self, name, config, zoom_levels):
         self._name = name
         self._config = config
         self._config['_all'] = []
+        self.zoom_levels = zoom_levels
         for imgs in self._config.itervalues():
             self._config['_all'].extend(imgs)
-        self._sheet = SpriteDict(['data', 'sprites', 'biomes', name])
+        self._sheet = SpriteDict(['data', 'sprites', 'biomes', name], zoom_levels = zoom_levels)
 
     @property
     def unpassable(self):
@@ -200,7 +206,7 @@ class Viewport(object):
         return True
 
     def blit_tile(self, image, tile):
-        image.blit(tile.zbg[self.zoom_level],
+        image.blit(tile.bg[self.zoom_level],
                    pygame.Rect(((tile.x - self.x) * self.tile_width,
                                 (tile.y - self.y) * self.tile_height),
                                (int(self.tile_width),
@@ -290,14 +296,6 @@ class Tile(pygame.Rect):
     def __init__(self, rect, bg):
         super(Tile, self).__init__(rect)
         self.bg = bg
-        self.zbg = {}
-        self.set_bg(bg)
-
-    def set_bg(self, bg):
-        self.bg = bg
-        for zl in [0.25, 0.5, 1.0, 2.0, 4.0]:
-            self.zbg[zl] = pygame.transform.scale(bg, (int(self.bg.get_rect().width * zl),
-                                                       int(self.bg.get_rect().height * zl)))
 
 
 class FpsLayer(pygame.sprite.Sprite):
@@ -344,14 +342,13 @@ class Game(ActorMixin):
         self.fps = self.cfg['gfx']['max_fps']
         self.playtime = 0.0
 
-        self.biomes = self.init_biomes(self.cfg['ui']['biomes'])
+        self.biomes = self.init_biomes()
         self.dispatcher = EventDispatcher()
         self.env_generator = EnvironmentGenerator()
         self.env = self.env_generator.create(Environment(biome = self.biomes['default'],
                                                          size = self.cfg['environment']['map_size']['medium'],
                                                          tile_size = self.cfg['environment']['tile_size']))
-        self.camera = Camera(pygame.Rect((0, 0),
-                                         (self.width, self.height - 200)),
+        self.camera = Camera(pygame.Rect((0, 0), (self.width, self.height - 200)),
                              self.env,
                              zoom_levels = self.cfg['ui']['camera']['zoom_levels'],
                              zoom_level = self.cfg['ui']['camera']['zoom_level'],
@@ -381,10 +378,10 @@ class Game(ActorMixin):
             self.ui_group.update()
             pygame.display.update(self.ui_group.draw(self.screen))
 
-    def init_biomes(self, c):
+    def init_biomes(self):
         _b = {}
-        for name, config in c.iteritems():
-            _b[name] = Biome(name, config)
+        for name, config in self.cfg['ui']['biomes'].iteritems():
+            _b[name] = Biome(name, config, self.cfg['ui']['camera']['zoom_levels'])
         return _b
 
 

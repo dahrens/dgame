@@ -40,9 +40,9 @@ class EnvironmentGenerator(object):
                 return False
         for x, y in room_pos:
             if x == start_pos[0] or y == start_pos[1] or x == start_pos[0] + size[0] - 1 or y == start_pos[1] + size[1] - 1:
-                self.env.tiles[x][y].set_bg(self.env.biome.wall)
+                self.env.tiles[x][y].bg = self.env.biome.wall
             else:
-                self.env.tiles[x][y].set_bg(self.env.biome.passable)
+                self.env.tiles[x][y].bg = self.env.biome.passable
         return room_pos
 
 
