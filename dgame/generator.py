@@ -14,6 +14,7 @@ class EnvironmentGenerator(object):
 
     def create(self, env, player):
         self.env = env
+        player.env = env
         logging.debug('generated env tiles len: {}/{}'.format(len(self.env.tiles), len(self.env.tiles[0])))
         self.open_pos = self._get_pos_set((1, 1), (self.env.size[0] - 2, self.env.size[1] - 2))
         self.close_pos = set()
@@ -39,7 +40,6 @@ class EnvironmentGenerator(object):
                 logging.warning('can not find suitable place for another room.')
         for hero in player.heros:
             hero.position = random.sample(self.rooms[0]['free'], 1)[0]
-            hero.env = self.env
             self.env.creatures[hero.position] = hero
         return self.env
 

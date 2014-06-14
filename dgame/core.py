@@ -4,16 +4,17 @@ The core components of the game.
 
 dgame is just a playground for python and pygame.
 '''
+from __future__ import print_function
 import pygame
 import sys, os, logging
 import collections, yaml
-from dgame.event import EventDispatcher
+from dgame.event import EventDispatcher, CommandQueue, UndoCommand, FlushCommand
 from dgame.ui import Camera, Tile, Entity, FpsLayer
 from dgame.image import Biome, CreatureSheet
 from dgame.generator import EnvironmentGenerator
 
 PROFILE = False
-DEBUG = False
+DEBUG = True
 
 class Configuration(dict):
     '''Game configuration based on YAML files.'''
@@ -50,34 +51,55 @@ class Configuration(dict):
 class Player(object):
     '''The player knows about its heros and is an actor.'''
 
-    def __init__(self, heros):
+    def __init__(self, heros, env = None):
         self.heros = heros
         self.active_hero = heros[0]
+        self.env = env
+        self.command_queue = CommandQueue()
 
     def move_active_hero_up(self):
-        self.active_hero.move(Creature.MOVE_UP)
+        '''Triggered by the event dispatcher.'''
+        self._move_active_hero(self.active_hero.position_up)
 
     def move_active_hero_down(self):
-        self.active_hero.move(Creature.MOVE_DOWN)
+        '''Triggered by the event dispatcher.'''
+        self._move_active_hero(self.active_hero.position_down)
 
     def move_active_hero_left(self):
-        self.active_hero.move(Creature.MOVE_LEFT)
+        '''Triggered by the event dispatcher.'''
+        self._move_active_hero(self.active_hero.position_left)
 
     def move_active_hero_right(self):
-        self.active_hero.move(Creature.MOVE_RIGHT)
+        '''Triggered by the event dispatcher.'''
+        self._move_active_hero(self.active_hero.position_right)
+
+    def test_flush_command(self):
+        cmd = FlushCommand('test_flush', lambda: print('flushed'))
+        self.command_queue.add(cmd)
+
+    def end_turn(self):
+        self.command_queue.flush()
+
+    def undo(self):
+        '''Undo the last made command in the command queue.'''
+        self.command_queue.undo()
+
+    def _move_active_hero(self, new_pos):
+        '''Generates a command and adds it to the command queue if the move is possible.'''
+        hero = self.active_hero
+        old_pos = hero.position
+        target_tile = self.env.get_tile(new_pos)
+        if target_tile.state == Tile.STATE_PASSABLE:
+            hero = self.active_hero
+            cmd = UndoCommand('move_creature', lambda: hero.move(new_pos), lambda: hero.move(old_pos))
+            self.command_queue.add(cmd)
 
 
 class Creature(object):
     '''A creature can move around in the environment'''
 
-    MOVE_UP = 1
-    MOVE_DOWN = 2
-    MOVE_LEFT = 3
-    MOVE_RIGHT = 4
-
     def __init__(self, creature_sheet = 'klara'):
         self.creature_sheet = creature_sheet
-        self.env = None
         self.entity = Entity(pygame.Rect((0, 0), (1, 1)),
                              self.creature_sheet.static)
 
@@ -89,18 +111,25 @@ class Creature(object):
     def position(self, v):
         self.entity.topleft = v
 
-    def move(self, direction):
-        nb = self.env.get_passable_neighbours(self.position)
-        if direction == self.MOVE_UP:
-            new_p = self.position[0], self.position[1] - 1
-        elif direction == self.MOVE_DOWN:
-            new_p = self.position[0], self.position[1] + 1
-        elif direction == self.MOVE_LEFT:
-            new_p = self.position[0] - 1, self.position[1]
-        elif direction == self.MOVE_RIGHT:
-            new_p = self.position[0] + 1, self.position[1]
-        if new_p in nb:
-            self.position = new_p
+    @property
+    def position_up(self):
+        return (self.position[0], self.position[1] - 1)
+
+    @property
+    def position_down(self):
+        return (self.position[0], self.position[1] + 1)
+
+    @property
+    def position_left(self):
+        return (self.position[0] - 1, self.position[1])
+
+    @property
+    def position_right(self):
+        return (self.position[0] + 1, self.position[1])
+
+    def move(self, position):
+        '''Set position, for usage in lambda statements.'''
+        self.position = position
 
 
 class Environment(object):
@@ -116,19 +145,14 @@ class Environment(object):
         self.creatures = {}
 
     def _default_tile(self, x, y):
+        '''Create this tile x times on initialize.'''
         return Tile(pygame.Rect((x, y), (1, 1)),
                     self.biome.unpassable)
 
-    def get_passable_neighbours(self, position):
-        n = [(position[0] - 1, position[1]),
-             (position[0] + 1, position[1]),
-             (position[0], position[1] - 1),
-             (position[0], position[1] + 1)]
-        pn = []
-        for x, y in n:
-            if self.tiles[x][y].state == Tile.STATE_PASSABLE:
-                pn.append((x, y))
-        return pn
+    def get_tile(self, position):
+        '''Get the tile at position.'''
+        x, y = position
+        return self.tiles[x][y]
 
 
 class Game():

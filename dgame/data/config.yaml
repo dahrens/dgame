@@ -9,6 +9,9 @@ controls:
     move_active_hero_down: [K_s]
     move_active_hero_left: [K_a]
     move_active_hero_right: [K_d]
+    undo: [K_BACKSPACE]
+    end_turn: [K_RETURN]
+    test_flush_command: [K_f] 
   camera:
     zoom_in: [K_KP_PLUS]
     zoom_out: [K_KP_MINUS]
