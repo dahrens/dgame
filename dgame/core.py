@@ -13,7 +13,7 @@ from dgame.event import EventDispatcher, CommandQueue, UndoCommand, FlushCommand
 from dgame.ui import Camera, Entity, Floor, FpsLayer
 from dgame.image import Biome, CreatureSheet
 from dgame.generator import EnvironmentGenerator
-from dgame.astar import AStar, Node
+from dgame.ai import AStar, Node
 
 PROFILE = False
 DEBUG = True
@@ -170,6 +170,41 @@ class Creature(object):
         self.position = position
 
 
+class Tile(object):
+    '''A tile is field on the map.'''
+
+    STATE_PASSABLE = 1
+    STATE_UNPASSABLE = -1
+
+    def __init__(self, pos, image):
+        self.floor = Floor(pygame.Rect(pos, (1, 1)),
+                           image)
+        self.image = image
+        self.state = self.STATE_UNPASSABLE
+
+    @property
+    def position(self):
+        return self.floor.topleft
+
+    @position.setter
+    def position(self, v):
+        self.floor.topleft = v
+
+    @property
+    def x(self):
+        return self.position[0]
+
+    @property
+    def y(self):
+        return self.position[1]
+
+    def __eq__(self, l):
+        if l.x == self.x and l.y == self.y:
+            return True
+        else:
+            return False
+
+
 class Environment(object):
     '''The environment knows about the map and there creatures in it.'''
 
@@ -252,41 +287,6 @@ class Environment(object):
         '''Get the tile at position.'''
         x, y = position
         return self.tiles[x][y]
-
-
-class Tile(object):
-    '''A tile is field on the map.'''
-
-    STATE_PASSABLE = 1
-    STATE_UNPASSABLE = -1
-
-    def __init__(self, pos, image):
-        self.floor = Floor(pygame.Rect(pos, (1, 1)),
-                           image)
-        self.image = image
-        self.state = self.STATE_UNPASSABLE
-
-    @property
-    def position(self):
-        return self.floor.topleft
-
-    @position.setter
-    def position(self, v):
-        self.floor.topleft = v
-
-    @property
-    def x(self):
-        return self.position[0]
-
-    @property
-    def y(self):
-        return self.position[1]
-
-    def __eq__(self, l):
-        if l.x == self.x and l.y == self.y:
-            return True
-        else:
-            return False
 
 
 class Game():
