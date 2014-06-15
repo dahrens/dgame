@@ -10,7 +10,7 @@ import sys, os, logging
 import collections, yaml
 import math
 from dgame.event import EventDispatcher, CommandQueue, UndoCommand, FlushCommand, OneWayCommand
-from dgame.ui import Camera, Entity, Floor, FpsLayer
+from dgame.ui import Map, Entity, Floor, FpsLayer
 from dgame.image import Biome, CreatureSheet
 from dgame.generator import EnvironmentGenerator
 from dgame.ai import AStar, Node
@@ -241,12 +241,17 @@ class Environment(object):
         return self.tiles[x][y]
 
     def reachable_positions(self, start, distance):
+        '''Return all reachable positions from start in distance. TODO: optimize astar, cause of many calcs here.'''
         rp = set()
         for x in range(start.x - distance, start.x + distance + 1):
             for y in range(start.y - distance, start.y + distance + 1):
                 if x == start.x and y == start.y: continue
                 if math.fabs(x - start.x) + math.fabs(y - start.y) <= distance and self.tiles[x][y].state == Tile.STATE_PASSABLE:
-                    rp.add((x, y))
+                    end = self.tiles[x][y]
+                    start_tile = self.tiles[x][y]
+                    p = self.path_finder.findPath(start_tile, end)
+                    if p and len(p.nodes) <= distance:
+                        rp.add((x, y))
         return rp
 
     def position_up(self, pos):
@@ -294,11 +299,9 @@ class Configuration(dict):
         return d
 
 
-class Game():
-    '''Currently the launcher.
-
-    TODO: seperate game from launch process, to allow saving.
-
+class Launcher():
+    '''
+    Launch the game.
     '''
 
     def __init__(self):
@@ -332,11 +335,11 @@ class Game():
                                                          config = self.cfg['environment'],
                                                          map_size_name = 'small',
                                                          player = self.player))
-        self.camera = Camera(pygame.Rect((0, 0), (self.width, self.height - 256)),
-                             self.env,
-                             zoom_levels = self.cfg['ui']['camera']['zoom_levels'],
-                             zoom_level = self.cfg['ui']['camera']['zoom_level'],
-                             scroll_speed = self.cfg['ui']['camera']['scroll_speed'])
+        self.camera = Map(pygame.Rect((0, 0), (self.width, self.height - 256)),
+                          self.env,
+                          zoom_levels = self.cfg['ui']['camera']['zoom_levels'],
+                          zoom_level = self.cfg['ui']['camera']['zoom_level'],
+                          scroll_speed = self.cfg['ui']['camera']['scroll_speed'])
         self.fps_ui = FpsLayer(self.font, self.clock, (self.width - 150, self.height - 30))
 
         self.dispatcher = EventDispatcher(self.cfg['controls'], {'camera': self.camera,
@@ -393,7 +396,7 @@ if __name__ == '__main__':
     if DEBUG:
         logging.basicConfig(level = logging.DEBUG)
     if PROFILE:
-        profile_result = profile(Game().run)
+        profile_result = profile(Launcher().run)
         print(profile_result)
     else:
-        Game().run()
+        Launcher().run()

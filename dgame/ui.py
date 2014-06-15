@@ -138,11 +138,11 @@ class Viewport(object):
                             int(self.tile_height)))
 
 
-class Camera(pygame.sprite.Sprite):
+class Map(pygame.sprite.Sprite):
     '''The camera shows a part of the current game environment aka map.'''
 
     def __init__(self, rect, env, offset = [0.0, 0.0], zoom_levels = [1.0], zoom_level = 1.0, scroll_speed = 0.5):
-        super(Camera, self).__init__()
+        super(Map, self).__init__()
         self.env = env
         self.rect = rect
         self.image = pygame.Surface(rect.size).convert()
