@@ -39,7 +39,9 @@ class EnvironmentGenerator(object):
                 logging.warning('can not find suitable place for another room.')
         for hero in self.env.player.heros:
             hero.position = random.sample(self.rooms[0]['free'], 1)[0]
+            hero.env = self.env
             self.env.creatures[hero.position] = hero
+            self.env.get_tile(hero.position).state = 2
         return self.env
 
     def gen_room(self, size_template):

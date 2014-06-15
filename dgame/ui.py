@@ -147,36 +147,39 @@ class Camera(pygame.sprite.Sprite):
         self.rect = rect
         self.image = pygame.Surface(rect.size).convert()
         self.overlay = pygame.Surface(rect.size).convert()
-        self.overlay.set_alpha(128)
+        self.overlay.set_alpha(64)
         self.viewport = Viewport(offset, rect.size, env.tile_size, env.size, zoom_level, zoom_levels, scroll_speed)
 
     def update(self):
         self.image.fill((200, 200, 200))
-        visible_position = set()
-        for tile in self._get_visibile():
+        v_tiles, v_positions = self._get_visible()
+        for tile in v_tiles:
             self.viewport.blit(self.image, tile)
-            visible_position.add(tile.topleft)
         for pos in self.env.creatures:
-            if pos in visible_position:
+            if pos in v_positions:
                 self.viewport.blit(self.image, self.env.creatures[pos].entity)
         self.update_overlay()
         self.image.blit(self.overlay, (0, 0))
 
     def update_overlay(self):
-        self.overlay.fill((0, 0, 0))
+        self.overlay.fill(0)
         x, y = self.env.player.active_hero.position
-        highlighted_rect = self.viewport.get_rect(x, y)
-        pygame.draw.rect(self.overlay, (100, 255, 100), highlighted_rect, 2)
+        pygame.draw.rect(self.overlay, (200, 200, 100), self.viewport.get_rect(x, y), 2)
+        for x, y in self.env.player.active_hero.reachable_positions:
+            pygame.draw.rect(self.overlay, (255, 255, 255), self.viewport.get_rect(x, y))
 
-    def _get_visibile(self):
+
+    def _get_visible(self):
         '''Get the current visible tiles.'''
-        v = []
+        v_tiles = []
+        v_positions = set()
         x_max = self.viewport.x_max if self.viewport.x_max <= self.env.width else self.env.width
         y_max = self.viewport.y_max if self.viewport.y_max <= self.env.height else self.env.height
         for x in range(self.viewport.x_min, x_max):
             for y in range(self.viewport.y_min, y_max):
-                v.append(self.env.tiles[x][y])
-        return v
+                v_tiles.append(self.env.tiles[x][y])
+                v_positions.add((x, y))
+        return v_tiles, v_positions
 
     def zoom_in(self):
         self.viewport.zoom(self.viewport.ZOOM_IN)

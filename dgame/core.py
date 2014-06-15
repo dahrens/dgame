@@ -8,6 +8,7 @@ from __future__ import print_function
 import pygame
 import sys, os, logging
 import collections, yaml
+import math
 from dgame.event import EventDispatcher, CommandQueue, UndoCommand, FlushCommand
 from dgame.ui import Camera, Tile, Entity, FpsLayer
 from dgame.image import Biome, CreatureSheet
@@ -94,19 +95,24 @@ class Player(object):
     def _move_active_hero(self, new_pos):
         '''Generates a command and adds it to the command queue if the move is possible.'''
         hero = self.active_hero
+        if hero.moves == 0: return
         old_pos = hero.position
         target_tile = self.env.get_tile(new_pos)
         if target_tile.state == Tile.STATE_PASSABLE:
             hero = self.active_hero
-            cmd = UndoCommand('move_creature', lambda: hero.move(new_pos), lambda: hero.move(old_pos))
+            cmd = UndoCommand('move_creature', lambda: hero.move(new_pos), lambda: hero.undo_move(old_pos))
             self.command_queue.add(cmd)
 
 
 class Creature(object):
     '''A creature can move around in the environment'''
 
-    def __init__(self, creature_sheet = 'klara'):
+    def __init__(self, creature_config, creature_sheet = 'sheep'):
         self.creature_sheet = creature_sheet
+        self.max_hp = creature_config['hp']
+        self.hp = creature_config['hp']
+        self.moves_max = creature_config['moves']
+        self.moves = creature_config['moves']
         self.entity = Entity(pygame.Rect((0, 0), (1, 1)),
                              self.creature_sheet.static)
 
@@ -117,6 +123,14 @@ class Creature(object):
     @position.setter
     def position(self, v):
         self.entity.topleft = v
+
+    @property
+    def x(self):
+        return self.position[0]
+
+    @property
+    def y(self):
+        return self.position[1]
 
     @property
     def position_up(self):
@@ -134,8 +148,28 @@ class Creature(object):
     def position_right(self):
         return (self.position[0] + 1, self.position[1])
 
+    @property
+    def reachable_positions(self):
+        rp = set()
+        for x in range(self.x - self.moves, self.x + self.moves + 1):
+            for y in range(self.y - self.moves, self.y + self.moves + 1):
+                if x == self.x and y == self.y: continue
+                if math.fabs(x - self.x) + math.fabs(y - self.y) <= 5 and self.env.tiles[x][y].state == Tile.STATE_PASSABLE:
+                    rp.add((x, y))
+        return rp
+
     def move(self, position):
+        self.moves -= 1
+        self._move(position)
+
+    def undo_move(self, position):
+        self.moves += 1
+        self._move(position)
+
+
+    def _move(self, position):
         '''Set position, for usage in lambda statements.'''
+        self.env.update_creature_position(self.position, position)
         self.position = position
 
 
@@ -157,6 +191,11 @@ class Environment(object):
         '''Create this tile x times on initialize.'''
         return Tile(pygame.Rect((x, y), (1, 1)),
                     self.biome.unpassable)
+
+    def update_creature_position(self, old_pos, new_pos):
+        self.creatures[new_pos] = self.creatures.pop(old_pos)
+        self.get_tile(old_pos).state = Tile.STATE_PASSABLE
+        self.get_tile(new_pos).state = Tile.STATE_UNPASSABLE
 
     def get_tile(self, position):
         '''Get the tile at position.'''
@@ -193,10 +232,10 @@ class Game():
 
         self.biomes = self.init_biomes()
         self.creatures = self.init_creatures()
-        self.player = Player(heros = [Creature(self.creatures['klara']),
-                                      Creature(self.creatures['klara']),
-                                      Creature(self.creatures['klara']),
-                                      Creature(self.creatures['klara'])])
+        self.player = Player(heros = [Creature(self.cfg['creatures']['sheep'], self.creatures['sheep']),
+                                      Creature(self.cfg['creatures']['sheep'], self.creatures['sheep']),
+                                      Creature(self.cfg['creatures']['sheep'], self.creatures['sheep']),
+                                      Creature(self.cfg['creatures']['sheep'], self.creatures['sheep'])])
         self.env_generator = EnvironmentGenerator(self.cfg['generator'], seed = 'testing')
         self.env = self.env_generator.create(Environment(biome = self.biomes['default'],
                                                          config = self.cfg['environment'],

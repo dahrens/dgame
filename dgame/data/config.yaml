@@ -30,6 +30,11 @@ environment:
     medium: [128,128]
     large: [256,256]
 
+creatures:
+  sheep:
+    hp: 50
+    moves: 5
+
 generator:
   small_room: [[5,5],[9,9]]
   medium_room: [[10,10],[19,19]]
@@ -56,8 +61,8 @@ ui:
 
 image:
   creatures:
-    klara:
-      static: ['schaf']
+    sheep:
+      static: ['static']
   biomes:
     default:
       entrance: [stone_stairs_up]
