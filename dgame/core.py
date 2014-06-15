@@ -18,37 +18,6 @@ from dgame.ai import AStar, Node
 PROFILE = False
 DEBUG = True
 
-class Configuration(dict):
-    '''Game configuration based on YAML files.'''
-
-    def __init__(self, default_config = 'data/config.yaml', user_config = 'data/user_config.yaml'):
-        self.user_file_path = user_config
-        default_file = file(default_config, 'rb')
-        user_file = file(self.user_file_path, 'rb')
-        self.update(yaml.load(default_file))
-        self._user_config = yaml.load(user_file)
-        user_file.close()
-        self.update(self._user_config)
-
-    def update_user_config(self, *args, **kwargs):
-        self._user_config.update(*args, **kwargs)
-        user_file = file(self.user_file_path, 'w+')
-        yaml.dump(self._user_config, user_file)
-        user_file.close()
-        self.update(self._user_config)
-
-    def update(self, u):
-        return self.update_dict(self, u)
-
-    def update_dict(self, d, u):
-        for k, v in u.iteritems():
-            if isinstance(v, collections.Mapping):
-                r = self.update_dict(d.get(k, {}), v)
-                d[k] = r
-            else:
-                d[k] = u[k]
-        return d
-
 
 class Player(object):
     '''The player knows about its heros and is an actor.'''
@@ -61,30 +30,32 @@ class Player(object):
 
     def move_active_hero_up(self):
         '''Triggered by the event dispatcher.'''
-        self.env.create_move_creature_command(self.active_hero, self.active_hero.position_up, self.command_queue)
+        return self.env.create_move_creature_command(self.active_hero, self.env.position_up(self.active_hero.position), self.command_queue)
 
     def move_active_hero_down(self):
         '''Triggered by the event dispatcher.'''
-        self.env.create_move_creature_command(self.active_hero, self.active_hero.position_down, self.command_queue)
+        return self.env.create_move_creature_command(self.active_hero, self.env.position_down(self.active_hero.position), self.command_queue)
 
     def move_active_hero_left(self):
         '''Triggered by the event dispatcher.'''
-        self.env.create_move_creature_command(self.active_hero, self.active_hero.position_left, self.command_queue)
+        return self.env.create_move_creature_command(self.active_hero, self.env.position_left(self.active_hero.position), self.command_queue)
 
     def move_active_hero_right(self):
         '''Triggered by the event dispatcher.'''
-        self.env.create_move_creature_command(self.active_hero, self.active_hero.position_right, self.command_queue)
+        return self.env.create_move_creature_command(self.active_hero, self.env.position_right(self.active_hero.position), self.command_queue)
 
     def test_flush_command(self):
         '''There are no commands that should be performed at the end of the turn. This is just proof of concept.'''
         cmd = FlushCommand('test_flush', lambda: print('flushed'))
         self.command_queue.add(cmd)
+        return True
 
     def end_turn(self):
         '''End the current turn'''
         self.command_queue.flush()
         for hero in self.heros:
             hero.end_turn()
+        return True
 
     def next_hero(self):
         '''Switch to the next hero the player controls'''
@@ -93,10 +64,12 @@ class Player(object):
             self.active_hero = self.heros[i]
         else:
             self.active_hero = self.heros[0]
+        return True
 
     def undo(self):
         '''Undo the last made command in the command queue.'''
         self.command_queue.undo()
+        return True
 
 
 class Creature(object):
@@ -108,6 +81,7 @@ class Creature(object):
         self.hp = creature_config['hp']
         self.moves_max = creature_config['moves']
         self.moves = creature_config['moves']
+        self.env = None
         self.entity = Entity(pygame.Rect((0, 0), (1, 1)),
                              self.creature_sheet.static)
 
@@ -128,30 +102,8 @@ class Creature(object):
         return self.position[1]
 
     @property
-    def position_up(self):
-        return (self.position[0], self.position[1] - 1)
-
-    @property
-    def position_down(self):
-        return (self.position[0], self.position[1] + 1)
-
-    @property
-    def position_left(self):
-        return (self.position[0] - 1, self.position[1])
-
-    @property
-    def position_right(self):
-        return (self.position[0] + 1, self.position[1])
-
-    @property
     def reachable_positions(self):
-        rp = set()
-        for x in range(self.x - self.moves, self.x + self.moves + 1):
-            for y in range(self.y - self.moves, self.y + self.moves + 1):
-                if x == self.x and y == self.y: continue
-                if math.fabs(x - self.x) + math.fabs(y - self.y) <= 5 and self.env.tiles[x][y].state == Tile.STATE_PASSABLE:
-                    rp.add((x, y))
-        return rp
+        return self.env.reachable_positions(self, self.moves)
 
     def end_turn(self):
         self.moves = self.moves_max
@@ -165,7 +117,7 @@ class Creature(object):
         self._move(position)
 
     def _move(self, position):
-        '''Set position, for usage in lambda statements.'''
+        '''Set position, for usage in lambda statements. TODO: move over in env? not sure...'''
         self.env.update_creature_position(self.position, position)
         self.position = position
 
@@ -173,8 +125,8 @@ class Creature(object):
 class Tile(object):
     '''A tile is field on the map.'''
 
-    STATE_PASSABLE = 1
     STATE_UNPASSABLE = -1
+    STATE_PASSABLE = 1
 
     def __init__(self, pos, image):
         self.floor = Floor(pygame.Rect(pos, (1, 1)),
@@ -268,14 +220,14 @@ class Environment(object):
 
     def create_move_creature_command(self, creature, new_pos, queue = None):
         '''Generates and executes a command; adds it to the command queue if the move is possible and the queue is given.'''
-        if creature.moves == 0: return
+        if creature.moves == 0: return False
+        if self.get_tile(new_pos).state == Tile.STATE_UNPASSABLE: return False
         old_pos = creature.position
-        target_tile = self.get_tile(new_pos)
-        if target_tile.state == Tile.STATE_PASSABLE:
-            if queue != None:
-                cmd = UndoCommand('move_creature', lambda: creature.move(new_pos), lambda: creature.undo_move(old_pos))
-                queue.add(cmd)
-            else: OneWayCommand('move_creature', lambda: creature.move(new_pos)).do()
+        if queue != None:
+            cmd = UndoCommand('move_creature', lambda: creature.move(new_pos), lambda: creature.undo_move(old_pos))
+            queue.add(cmd)
+        else: OneWayCommand('move_creature', lambda: creature.move(new_pos)).do()
+        return True
 
 
     def update_creature_position(self, old_pos, new_pos):
@@ -287,6 +239,59 @@ class Environment(object):
         '''Get the tile at position.'''
         x, y = position
         return self.tiles[x][y]
+
+    def reachable_positions(self, start, distance):
+        rp = set()
+        for x in range(start.x - distance, start.x + distance + 1):
+            for y in range(start.y - distance, start.y + distance + 1):
+                if x == start.x and y == start.y: continue
+                if math.fabs(x - start.x) + math.fabs(y - start.y) <= distance and self.tiles[x][y].state == Tile.STATE_PASSABLE:
+                    rp.add((x, y))
+        return rp
+
+    def position_up(self, pos):
+        return (pos[0], pos[1] - 1)
+
+    def position_down(self, pos):
+        return (pos[0], pos[1] + 1)
+
+    def position_left(self, pos):
+        return (pos[0] - 1, pos[1])
+
+    def position_right(self, pos):
+        return (pos[0] + 1, pos[1])
+
+
+class Configuration(dict):
+    '''Game configuration based on YAML files.'''
+
+    def __init__(self, default_config = 'data/config.yaml', user_config = 'data/user_config.yaml'):
+        self.user_file_path = user_config
+        default_file = file(default_config, 'rb')
+        user_file = file(self.user_file_path, 'rb')
+        self.update(yaml.load(default_file))
+        self._user_config = yaml.load(user_file)
+        user_file.close()
+        self.update(self._user_config)
+
+    def update_user_config(self, *args, **kwargs):
+        self._user_config.update(*args, **kwargs)
+        user_file = file(self.user_file_path, 'w+')
+        yaml.dump(self._user_config, user_file)
+        user_file.close()
+        self.update(self._user_config)
+
+    def update(self, u):
+        return self.update_dict(self, u)
+
+    def update_dict(self, d, u):
+        for k, v in u.iteritems():
+            if isinstance(v, collections.Mapping):
+                r = self.update_dict(d.get(k, {}), v)
+                d[k] = r
+            else:
+                d[k] = u[k]
+        return d
 
 
 class Game():

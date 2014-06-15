@@ -5,7 +5,6 @@ The ui module includes components that are visible in the game.
 from __future__ import division
 import pygame
 import math
-import logging
 
 
 class Viewport(object):
@@ -153,6 +152,7 @@ class Camera(pygame.sprite.Sprite):
 
     @property
     def hover_tile(self):
+        '''Calc and return the currently hovered tile if any else False'''
         mouse_x, mouse_y = pygame.mouse.get_pos()
         if mouse_x > self.viewport._width or mouse_y > self.viewport._height:
             return False
@@ -161,31 +161,39 @@ class Camera(pygame.sprite.Sprite):
         return self.env.tiles[x][y]
 
     def update(self):
+        '''Update the camera.'''
         self.image.fill((200, 200, 200))
         v_tiles, v_positions = self._get_visible()
+        # draw floor
         for tile in v_tiles:
             self.viewport.blit(self.image, tile)
+        # draw creatures
         for pos in self.env.creatures:
             if pos in v_positions:
                 self.viewport.blit(self.image, self.env.creatures[pos].entity)
         self.update_overlay()
 
     def update_overlay(self):
+        '''Update ui response elements.'''
         self.overlay.fill(0)
+        # mark active hero
         x, y = self.env.player.active_hero.position
         pygame.draw.rect(self.overlay, (200, 200, 100), self.viewport.get_rect(x, y), 2)
+        # draw possible moves
         for x, y in self.env.player.active_hero.reachable_positions:
             pygame.draw.rect(self.overlay, (155, 155, 155), self.viewport.get_rect(x, y))
-        if self.hover_tile:
-            start = self.env.get_tile(self.env.player.active_hero.position)
-            end = self.hover_tile
+        # calc and show path from active hero to hovered tile
+        self.highlight_path(self.env.player.active_hero.position, self.hover_tile)
+        self.image.blit(self.overlay, (0, 0))
 
+    def highlight_path(self, start, end, color = (255, 255, 255)):
+        '''Highlight a path. with color'''
+        if end:
+            start = self.env.get_tile(start)
             p = self.env.path_finder.findPath(start, end)
             if p:
                 for n in p.nodes:
-                    pygame.draw.rect(self.overlay, (255, 255, 255), self.viewport.get_rect(n.location.x, n.location.y))
-        self.image.blit(self.overlay, (0, 0))
-
+                    pygame.draw.rect(self.overlay, color, self.viewport.get_rect(n.location.x, n.location.y))
 
     def _get_visible(self):
         '''Get the current visible tiles.'''

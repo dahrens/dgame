@@ -22,7 +22,9 @@ class EventDispatcher(object):
                 command_name = actor_name + '_' + method_name
                 self.commands[command_name] = OneWayCommand(command_name, getattr(self.actors[actor_name], method_name))
                 for k in key_bindings:
-                    self.keydown_events[getattr(pygame, k)] = command_name
+                    if not getattr(pygame, k) in self.keydown_events:
+                        self.keydown_events[getattr(pygame, k)] = []
+                    self.keydown_events[getattr(pygame, k)].append(command_name)
 
     def dispatch(self, event):
         '''
@@ -37,7 +39,8 @@ class EventDispatcher(object):
             return True
         elif event.type == pygame.KEYDOWN:
             if event.key in self.keydown_events:
-                self.commands[self.keydown_events[event.key]].do()
+                for cmd in self.keydown_events[event.key]:
+                    if self.commands[cmd].do(): return True
             return True
         elif event.type == pygame.KEYUP:
             return True
