@@ -10,7 +10,7 @@ import sys, os, logging
 import collections, yaml
 import math
 from dgame.event import EventDispatcher, CommandQueue, UndoCommand, FlushCommand
-from dgame.ui import Camera, Tile, Entity, FpsLayer
+from dgame.ui import Camera, Entity, Floor, FpsLayer
 from dgame.image import Biome, CreatureSheet
 from dgame.generator import EnvironmentGenerator
 from dgame.astar import AStar, Node
@@ -195,8 +195,7 @@ class Environment(object):
 
     def _default_tile(self, x, y):
         '''Create this tile x times on initialize.'''
-        return Tile(pygame.Rect((x, y), (1, 1)),
-                    self.biome.unpassable)
+        return Tile((x, y), self.biome.unpassable)
 
     def getNode(self, tile, from_tile = False):
         '''Get a node of the map, for a* algorithm.'''
@@ -248,6 +247,41 @@ class Environment(object):
         '''Get the tile at position.'''
         x, y = position
         return self.tiles[x][y]
+
+
+class Tile(object):
+    '''A tile is field on the map.'''
+
+    STATE_PASSABLE = 1
+    STATE_UNPASSABLE = -1
+
+    def __init__(self, pos, image):
+        self.floor = Floor(pygame.Rect(pos, (1, 1)),
+                           image)
+        self.image = image
+        self.state = self.STATE_UNPASSABLE
+
+    @property
+    def position(self):
+        return self.floor.topleft
+
+    @position.setter
+    def position(self, v):
+        self.floor.topleft = v
+
+    @property
+    def x(self):
+        return self.position[0]
+
+    @property
+    def y(self):
+        return self.position[1]
+
+    def __eq__(self, l):
+        if l.x == self.x and l.y == self.y:
+            return True
+        else:
+            return False
 
 
 class Game():

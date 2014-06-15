@@ -241,19 +241,9 @@ class Entity(pygame.Rect):
         self.image = image
 
 
-class Tile(pygame.Rect):
+class Floor(pygame.Rect):
     '''A tile is field on the map.'''
 
-    STATE_PASSABLE = 1
-    STATE_UNPASSABLE = -1
-
     def __init__(self, rect, image):
-        super(Tile, self).__init__(rect)
+        super(Floor, self).__init__(rect)
         self.image = image
-        self.state = self.STATE_UNPASSABLE
-
-    def __eq__(self, l):
-        if l.x == self.x and l.y == self.y:
-            return True
-        else:
-            return False
