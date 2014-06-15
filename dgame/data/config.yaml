@@ -11,7 +11,8 @@ controls:
     move_active_hero_right: [K_d]
     undo: [K_BACKSPACE]
     end_turn: [K_RETURN]
-    test_flush_command: [K_f] 
+    test_flush_command: [K_f]
+    next_hero: [K_TAB]
   camera:
     zoom_in: [K_KP_PLUS]
     zoom_out: [K_KP_MINUS]

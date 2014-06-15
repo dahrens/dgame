@@ -80,6 +80,13 @@ class Player(object):
     def end_turn(self):
         self.command_queue.flush()
 
+    def next_hero(self):
+        i = self.heros.index(self.active_hero)
+        if (i + 2) <= len(self.heros):
+            self.active_hero = self.heros[i + 1]
+        else:
+            self.active_hero = self.heros[0]
+
     def undo(self):
         '''Undo the last made command in the command queue.'''
         self.command_queue.undo()
@@ -135,7 +142,7 @@ class Creature(object):
 class Environment(object):
     '''The environment knows about the map and there creatures in it.'''
 
-    def __init__(self, biome, config, map_size_name):
+    def __init__(self, biome, config, map_size_name, player):
         self.config = config
         self.map_size_name = map_size_name
         self.size = self.width, self.height = config['map_size'][map_size_name]
@@ -143,6 +150,8 @@ class Environment(object):
         self.biome = biome
         self.tiles = [[self._default_tile(x, y) for y in range(self.height)] for x in range(self.width)]
         self.creatures = {}
+        self.player = player
+        self.player.env = self
 
     def _default_tile(self, x, y):
         '''Create this tile x times on initialize.'''
@@ -184,12 +193,15 @@ class Game():
 
         self.biomes = self.init_biomes()
         self.creatures = self.init_creatures()
-        self.player = Player(heros = [Creature(self.creatures['klara'])])
+        self.player = Player(heros = [Creature(self.creatures['klara']),
+                                      Creature(self.creatures['klara']),
+                                      Creature(self.creatures['klara']),
+                                      Creature(self.creatures['klara'])])
         self.env_generator = EnvironmentGenerator(self.cfg['generator'], seed = 'testing')
         self.env = self.env_generator.create(Environment(biome = self.biomes['default'],
                                                          config = self.cfg['environment'],
-                                                         map_size_name = 'small'),
-                                             player = self.player)
+                                                         map_size_name = 'small',
+                                                         player = self.player))
         self.camera = Camera(pygame.Rect((0, 0), (self.width, self.height - 256)),
                              self.env,
                              zoom_levels = self.cfg['ui']['camera']['zoom_levels'],
@@ -208,7 +220,7 @@ class Game():
 
     def run(self):
         running = True
-        pygame.key.set_repeat(100, 10)
+        pygame.key.set_repeat(200, 10)
         while running:
             for event in pygame.event.get():
                 running = self.dispatcher.dispatch(event)

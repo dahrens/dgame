@@ -129,10 +129,13 @@ class Viewport(object):
     def blit(self, surface, tile):
         '''Blit an image on the viewport.'''
         surface.blit(tile.image[self.zoom_level],
-                     pygame.Rect(((tile.x - self.x) * self.tile_width,
-                                  (tile.y - self.y) * self.tile_height),
-                                 (int(self.tile_width),
-                                  int(self.tile_height))))
+                     self.get_rect(tile.x, tile.y))
+
+    def get_rect(self, x, y):
+        return pygame.Rect(((x - self.x) * self.tile_width,
+                            (y - self.y) * self.tile_height),
+                           (int(self.tile_width),
+                            int(self.tile_height)))
 
 
 class Camera(pygame.sprite.Sprite):
@@ -143,6 +146,8 @@ class Camera(pygame.sprite.Sprite):
         self.env = env
         self.rect = rect
         self.image = pygame.Surface(rect.size).convert()
+        self.overlay = pygame.Surface(rect.size).convert()
+        self.overlay.set_alpha(128)
         self.viewport = Viewport(offset, rect.size, env.tile_size, env.size, zoom_level, zoom_levels, scroll_speed)
 
     def update(self):
@@ -154,6 +159,14 @@ class Camera(pygame.sprite.Sprite):
         for pos in self.env.creatures:
             if pos in visible_position:
                 self.viewport.blit(self.image, self.env.creatures[pos].entity)
+        self.update_overlay()
+        self.image.blit(self.overlay, (0, 0))
+
+    def update_overlay(self):
+        self.overlay.fill((0, 0, 0))
+        x, y = self.env.player.active_hero.position
+        highlighted_rect = self.viewport.get_rect(x, y)
+        pygame.draw.rect(self.overlay, (100, 255, 100), highlighted_rect, 2)
 
     def _get_visibile(self):
         '''Get the current visible tiles.'''
