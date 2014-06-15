@@ -9,7 +9,7 @@ import pygame
 import sys, os, logging
 import collections, yaml
 import math
-from dgame.event import EventDispatcher, CommandQueue, UndoCommand, FlushCommand
+from dgame.event import EventDispatcher, CommandQueue, UndoCommand, FlushCommand, OneWayCommand
 from dgame.ui import Camera, Entity, Floor, FpsLayer
 from dgame.image import Biome, CreatureSheet
 from dgame.generator import EnvironmentGenerator
@@ -61,50 +61,42 @@ class Player(object):
 
     def move_active_hero_up(self):
         '''Triggered by the event dispatcher.'''
-        self._move_active_hero(self.active_hero.position_up)
+        self.env.create_move_creature_command(self.active_hero, self.active_hero.position_up, self.command_queue)
 
     def move_active_hero_down(self):
         '''Triggered by the event dispatcher.'''
-        self._move_active_hero(self.active_hero.position_down)
+        self.env.create_move_creature_command(self.active_hero, self.active_hero.position_down, self.command_queue)
 
     def move_active_hero_left(self):
         '''Triggered by the event dispatcher.'''
-        self._move_active_hero(self.active_hero.position_left)
+        self.env.create_move_creature_command(self.active_hero, self.active_hero.position_left, self.command_queue)
 
     def move_active_hero_right(self):
         '''Triggered by the event dispatcher.'''
-        self._move_active_hero(self.active_hero.position_right)
+        self.env.create_move_creature_command(self.active_hero, self.active_hero.position_right, self.command_queue)
 
     def test_flush_command(self):
+        '''There are no commands that should be performed at the end of the turn. This is just proof of concept.'''
         cmd = FlushCommand('test_flush', lambda: print('flushed'))
         self.command_queue.add(cmd)
 
     def end_turn(self):
+        '''End the current turn'''
         self.command_queue.flush()
         for hero in self.heros:
             hero.end_turn()
 
     def next_hero(self):
-        i = self.heros.index(self.active_hero)
-        if (i + 2) <= len(self.heros):
-            self.active_hero = self.heros[i + 1]
+        '''Switch to the next hero the player controls'''
+        i = self.heros.index(self.active_hero) + 1
+        if (i) < len(self.heros):
+            self.active_hero = self.heros[i]
         else:
             self.active_hero = self.heros[0]
 
     def undo(self):
         '''Undo the last made command in the command queue.'''
         self.command_queue.undo()
-
-    def _move_active_hero(self, new_pos):
-        '''Generates a command and adds it to the command queue if the move is possible.'''
-        hero = self.active_hero
-        if hero.moves == 0: return
-        old_pos = hero.position
-        target_tile = self.env.get_tile(new_pos)
-        if target_tile.state == Tile.STATE_PASSABLE:
-            hero = self.active_hero
-            cmd = UndoCommand('move_creature', lambda: hero.move(new_pos), lambda: hero.undo_move(old_pos))
-            self.command_queue.add(cmd)
 
 
 class Creature(object):
@@ -237,6 +229,19 @@ class Environment(object):
             n.parent = fromnode
             return n
         return None
+
+
+    def create_move_creature_command(self, creature, new_pos, queue = None):
+        '''Generates and executes a command; adds it to the command queue if the move is possible and the queue is given.'''
+        if creature.moves == 0: return
+        old_pos = creature.position
+        target_tile = self.get_tile(new_pos)
+        if target_tile.state == Tile.STATE_PASSABLE:
+            if queue != None:
+                cmd = UndoCommand('move_creature', lambda: creature.move(new_pos), lambda: creature.undo_move(old_pos))
+                queue.add(cmd)
+            else: OneWayCommand('move_creature', lambda: creature.move(new_pos)).do()
+
 
     def update_creature_position(self, old_pos, new_pos):
         self.creatures[new_pos] = self.creatures.pop(old_pos)
