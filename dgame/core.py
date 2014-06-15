@@ -13,6 +13,7 @@ from dgame.event import EventDispatcher, CommandQueue, UndoCommand, FlushCommand
 from dgame.ui import Camera, Tile, Entity, FpsLayer
 from dgame.image import Biome, CreatureSheet
 from dgame.generator import EnvironmentGenerator
+from dgame.astar import AStar, Node
 
 PROFILE = False
 DEBUG = True
@@ -80,6 +81,8 @@ class Player(object):
 
     def end_turn(self):
         self.command_queue.flush()
+        for hero in self.heros:
+            hero.end_turn()
 
     def next_hero(self):
         i = self.heros.index(self.active_hero)
@@ -158,6 +161,9 @@ class Creature(object):
                     rp.add((x, y))
         return rp
 
+    def end_turn(self):
+        self.moves = self.moves_max
+
     def move(self, position):
         self.moves -= 1
         self._move(position)
@@ -165,7 +171,6 @@ class Creature(object):
     def undo_move(self, position):
         self.moves += 1
         self._move(position)
-
 
     def _move(self, position):
         '''Set position, for usage in lambda statements.'''
@@ -186,11 +191,53 @@ class Environment(object):
         self.creatures = {}
         self.player = player
         self.player.env = self
+        self.path_finder = AStar(self)
 
     def _default_tile(self, x, y):
         '''Create this tile x times on initialize.'''
         return Tile(pygame.Rect((x, y), (1, 1)),
                     self.biome.unpassable)
+
+    def getNode(self, tile, from_tile = False):
+        '''Get a node of the map, for a* algorithm.'''
+        x = tile.x
+        y = tile.y
+        if x < 0 or x >= self.width or y < 0 or y >= self.height:
+            return None
+        d = tile.state
+        if d == -1 and not from_tile:
+            return None
+
+        return Node(tile, d, ((y * self.width) + x));
+
+    def getAdjacentNodes(self, curnode, dest):
+        '''Get adjacent nodes'''
+        result = []
+
+        cl = curnode.location
+        dl = dest
+
+        n = self._handleNode(cl.x + 1, cl.y, curnode, dl.x, dl.y)
+        if n: result.append(n)
+        n = self._handleNode(cl.x - 1, cl.y, curnode, dl.x, dl.y)
+        if n: result.append(n)
+        n = self._handleNode(cl.x, cl.y + 1, curnode, dl.x, dl.y)
+        if n: result.append(n)
+        n = self._handleNode(cl.x, cl.y - 1, curnode, dl.x, dl.y)
+        if n: result.append(n)
+        return result
+
+    def _handleNode(self, x, y, fromnode, destx, desty):
+        n = self.getNode(self.tiles[x][y])
+        if n is not None:
+            dx = max(x, destx) - min(x, destx)
+            dy = max(y, desty) - min(y, desty)
+            emCost = dx + dy
+            n.mCost += fromnode.mCost
+            n.score = n.mCost + emCost
+            n.parent = fromnode
+            return n
+        return None
 
     def update_creature_position(self, old_pos, new_pos):
         self.creatures[new_pos] = self.creatures.pop(old_pos)

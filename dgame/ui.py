@@ -5,6 +5,7 @@ The ui module includes components that are visible in the game.
 from __future__ import division
 import pygame
 import math
+import logging
 
 
 class Viewport(object):
@@ -150,6 +151,15 @@ class Camera(pygame.sprite.Sprite):
         self.overlay.set_alpha(64)
         self.viewport = Viewport(offset, rect.size, env.tile_size, env.size, zoom_level, zoom_levels, scroll_speed)
 
+    @property
+    def hover_tile(self):
+        mouse_x, mouse_y = pygame.mouse.get_pos()
+        if mouse_x > self.viewport._width or mouse_y > self.viewport._height:
+            return False
+        x = int(((mouse_x / self.viewport.tile_width)) + self.viewport.x)
+        y = int(((mouse_y / self.viewport.tile_height)) + self.viewport.y)
+        return self.env.tiles[x][y]
+
     def update(self):
         self.image.fill((200, 200, 200))
         v_tiles, v_positions = self._get_visible()
@@ -159,14 +169,22 @@ class Camera(pygame.sprite.Sprite):
             if pos in v_positions:
                 self.viewport.blit(self.image, self.env.creatures[pos].entity)
         self.update_overlay()
-        self.image.blit(self.overlay, (0, 0))
 
     def update_overlay(self):
         self.overlay.fill(0)
         x, y = self.env.player.active_hero.position
         pygame.draw.rect(self.overlay, (200, 200, 100), self.viewport.get_rect(x, y), 2)
         for x, y in self.env.player.active_hero.reachable_positions:
-            pygame.draw.rect(self.overlay, (255, 255, 255), self.viewport.get_rect(x, y))
+            pygame.draw.rect(self.overlay, (155, 155, 155), self.viewport.get_rect(x, y))
+        if self.hover_tile:
+            start = self.env.get_tile(self.env.player.active_hero.position)
+            end = self.hover_tile
+
+            p = self.env.path_finder.findPath(start, end)
+            if p:
+                for n in p.nodes:
+                    pygame.draw.rect(self.overlay, (255, 255, 255), self.viewport.get_rect(n.location.x, n.location.y))
+        self.image.blit(self.overlay, (0, 0))
 
 
     def _get_visible(self):
@@ -227,9 +245,15 @@ class Tile(pygame.Rect):
     '''A tile is field on the map.'''
 
     STATE_PASSABLE = 1
-    STATE_UNPASSABLE = 2
+    STATE_UNPASSABLE = -1
 
     def __init__(self, rect, image):
         super(Tile, self).__init__(rect)
         self.image = image
         self.state = self.STATE_UNPASSABLE
+
+    def __eq__(self, l):
+        if l.x == self.x and l.y == self.y:
+            return True
+        else:
+            return False

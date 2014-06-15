@@ -31,7 +31,9 @@ class EventDispatcher(object):
         Currently only KEYDOWN and QUIT were handled at all.
 
         '''
-        if event.type == pygame.MOUSEMOTION or event.type == pygame.MOUSEBUTTONUP or event.type == pygame.MOUSEBUTTONDOWN:
+        if event.type == pygame.MOUSEMOTION:
+            return True
+        elif event.type == pygame.MOUSEBUTTONUP or event.type == pygame.MOUSEBUTTONDOWN:
             return True
         elif event.type == pygame.KEYDOWN:
             if event.key in self.keydown_events:

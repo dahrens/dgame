@@ -41,7 +41,7 @@ class EnvironmentGenerator(object):
             hero.position = random.sample(self.rooms[0]['free'], 1)[0]
             hero.env = self.env
             self.env.creatures[hero.position] = hero
-            self.env.get_tile(hero.position).state = 2
+            self.env.get_tile(hero.position).state = -1
         return self.env
 
     def gen_room(self, size_template):
