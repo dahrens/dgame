@@ -40,7 +40,7 @@ class EnvironmentGenerator(object):
         for hero in self.env.player.heros:
             hero.position = random.sample(self.rooms[0]['free'], 1)[0]
             hero.env = self.env
-            self.env.creatures[hero.position] = hero
+            self.env.creatures.append(hero)
             self.env.get_tile(hero.position).state = -1
         return self.env
 
@@ -61,10 +61,10 @@ class EnvironmentGenerator(object):
         room_pos_free = set()
         for x, y in room_pos:
             if x == start_pos[0] or y == start_pos[1] or x == start_pos[0] + size[0] - 1 or y == start_pos[1] + size[1] - 1:
-                self.env.tiles[x][y].image = self.env.biome.wall
+                self.env.tiles[x][y].ui.image = self.env.biome.wall
                 room_pos_used.add((x, y))
             else:
-                self.env.tiles[x][y].image = self.env.biome.passable
+                self.env.tiles[x][y].ui.image = self.env.biome.passable
                 self.env.tiles[x][y].state = self.env.tiles[x][y].STATE_PASSABLE
                 room_pos_free.add((x, y))
         return {'used': room_pos_used, 'free': room_pos_free}

@@ -126,10 +126,10 @@ class Viewport(object):
         elif direction == self.ZOOM_OUT and 0 <= i - 1:
                 self.zoom_level = self.zoom_levels[i - 1]
 
-    def blit(self, surface, tile):
+    def blit(self, surface, el):
         '''Blit an image on the viewport.'''
-        surface.blit(tile.image[self.zoom_level],
-                     self.get_rect(tile.x, tile.y))
+        surface.blit(el.ui.image[self.zoom_level],
+                     self.get_rect(el.x, el.y))
 
     def get_rect(self, x, y):
         return pygame.Rect(((x - self.x) * self.tile_width,
@@ -168,9 +168,9 @@ class Map(pygame.sprite.Sprite):
         for tile in v_tiles:
             self.viewport.blit(self.image, tile)
         # draw creatures
-        for pos in self.env.creatures:
-            if pos in v_positions:
-                self.viewport.blit(self.image, self.env.creatures[pos].entity)
+        for c in self.env.creatures:
+            if c.position in v_positions:
+                self.viewport.blit(self.image, c)
         self.update_overlay()
 
     def update_overlay(self):
@@ -241,17 +241,17 @@ class FpsLayer(pygame.sprite.Sprite):
         self.rect = pygame.Rect(self.position, self.image.get_rect().size)
 
 
-class Entity(pygame.Rect):
+class Entity(object):
     '''An entity represents moving creatures on the map.'''
 
-    def __init__(self, rect, image):
-        super(Entity, self).__init__(rect)
-        self.image = image
+    def __init__(self, creature_sheet):
+        self.creature_sheet = creature_sheet
+        self.image = creature_sheet.static
 
 
-class Floor(pygame.Rect):
+class Floor(object):
     '''A tile is field on the map.'''
 
-    def __init__(self, rect, image):
-        super(Floor, self).__init__(rect)
-        self.image = image
+    def __init__(self, biome, image):
+        self.biome = biome
+        self.image = biome.unpassable

@@ -16,7 +16,7 @@ from dgame.generator import EnvironmentGenerator
 from dgame.ai import AStar, Node
 
 PROFILE = False
-DEBUG = True
+DEBUG = False
 
 
 class Player(object):
@@ -75,23 +75,15 @@ class Player(object):
 class Creature(object):
     '''A creature can move around in the environment'''
 
-    def __init__(self, creature_config, creature_sheet = 'sheep'):
+    def __init__(self, creature_config, creature_sheet = None, size = (1, 1), pos = None, env = None):
         self.creature_sheet = creature_sheet
         self.max_hp = creature_config['hp']
         self.hp = creature_config['hp']
         self.moves_max = creature_config['moves']
         self.moves = creature_config['moves']
-        self.env = None
-        self.entity = Entity(pygame.Rect((0, 0), (1, 1)),
-                             self.creature_sheet.static)
-
-    @property
-    def position(self):
-        return self.entity.topleft
-
-    @position.setter
-    def position(self, v):
-        self.entity.topleft = v
+        self.env = env
+        self.position = pos
+        self.ui = Entity(self.creature_sheet)
 
     @property
     def x(self):
@@ -118,7 +110,8 @@ class Creature(object):
 
     def _move(self, position):
         '''Set position, for usage in lambda statements. TODO: move over in env? not sure...'''
-        self.env.update_creature_position(self.position, position)
+        self.env.get_tile(self.position).state = Tile.STATE_PASSABLE
+        self.env.get_tile(position).state = Tile.STATE_UNPASSABLE
         self.position = position
 
 
@@ -128,19 +121,12 @@ class Tile(object):
     STATE_UNPASSABLE = -1
     STATE_PASSABLE = 1
 
-    def __init__(self, pos, image):
-        self.floor = Floor(pygame.Rect(pos, (1, 1)),
-                           image)
-        self.image = image
+    def __init__(self, env, pos, size = (1, 1)):
+        self.position = pos
+        self.size = size
+        self.env = env
         self.state = self.STATE_UNPASSABLE
-
-    @property
-    def position(self):
-        return self.floor.topleft
-
-    @position.setter
-    def position(self, v):
-        self.floor.topleft = v
+        self.ui = Floor(self.env.biome, self.state)
 
     @property
     def x(self):
@@ -167,14 +153,14 @@ class Environment(object):
         self.tile_size = self.tile_width, self.tile_height = config['tile_size']
         self.biome = biome
         self.tiles = [[self._default_tile(x, y) for y in range(self.height)] for x in range(self.width)]
-        self.creatures = {}
+        self.creatures = []
         self.player = player
         self.player.env = self
         self.path_finder = AStar(self)
 
     def _default_tile(self, x, y):
         '''Create this tile x times on initialize.'''
-        return Tile((x, y), self.biome.unpassable)
+        return Tile(self, (x, y))
 
     def getNode(self, tile, from_tile = False):
         '''Get a node of the map, for a* algorithm.'''
@@ -217,7 +203,6 @@ class Environment(object):
             return n
         return None
 
-
     def create_move_creature_command(self, creature, new_pos, queue = None):
         '''Generates and executes a command; adds it to the command queue if the move is possible and the queue is given.'''
         if creature.moves == 0: return False
@@ -228,12 +213,6 @@ class Environment(object):
             queue.add(cmd)
         else: OneWayCommand('move_creature', lambda: creature.move(new_pos)).do()
         return True
-
-
-    def update_creature_position(self, old_pos, new_pos):
-        self.creatures[new_pos] = self.creatures.pop(old_pos)
-        self.get_tile(old_pos).state = Tile.STATE_PASSABLE
-        self.get_tile(new_pos).state = Tile.STATE_UNPASSABLE
 
     def get_tile(self, position):
         '''Get the tile at position.'''
@@ -250,7 +229,7 @@ class Environment(object):
                     end = self.tiles[x][y]
                     start_tile = self.tiles[x][y]
                     p = self.path_finder.findPath(start_tile, end)
-                    if p and len(p.nodes) <= distance:
+                    if p and len(p.nodes) <= distance + 1:
                         rp.add((x, y))
         return rp
 

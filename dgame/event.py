@@ -1,7 +1,7 @@
 # coding=utf-8
 '''The event module handles the incoming input and dispatches it to the actors'''
 import pygame
-from collections import namedtuple, OrderedDict, _itemgetter, deque
+from collections import namedtuple, deque
 
 
 class EventDispatcher(object):
