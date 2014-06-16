@@ -162,7 +162,7 @@ class Environment(object):
         '''Create this tile x times on initialize.'''
         return Tile(self, (x, y))
 
-    def getNode(self, tile, from_tile = False):
+    def get_node(self, tile, from_tile = False):
         '''Get a node of the map, for a* algorithm.'''
         x = tile.x
         y = tile.y
@@ -174,32 +174,32 @@ class Environment(object):
 
         return Node(tile, d, ((y * self.width) + x));
 
-    def getAdjacentNodes(self, curnode, dest):
+    def get_adjacent_nodes(self, curnode, dest):
         '''Get adjacent nodes'''
         result = []
 
         cl = curnode.location
         dl = dest
 
-        n = self._handleNode(cl.x + 1, cl.y, curnode, dl.x, dl.y)
+        n = self._handle_astar_node(cl.x + 1, cl.y, curnode, dl.x, dl.y)
         if n: result.append(n)
-        n = self._handleNode(cl.x - 1, cl.y, curnode, dl.x, dl.y)
+        n = self._handle_astar_node(cl.x - 1, cl.y, curnode, dl.x, dl.y)
         if n: result.append(n)
-        n = self._handleNode(cl.x, cl.y + 1, curnode, dl.x, dl.y)
+        n = self._handle_astar_node(cl.x, cl.y + 1, curnode, dl.x, dl.y)
         if n: result.append(n)
-        n = self._handleNode(cl.x, cl.y - 1, curnode, dl.x, dl.y)
+        n = self._handle_astar_node(cl.x, cl.y - 1, curnode, dl.x, dl.y)
         if n: result.append(n)
         return result
 
-    def _handleNode(self, x, y, fromnode, destx, desty):
-        n = self.getNode(self.tiles[x][y])
+    def _handle_astar_node(self, x, y, from_node, dest_x, dest_y):
+        n = self.get_node(self.tiles[x][y])
         if n is not None:
-            dx = max(x, destx) - min(x, destx)
-            dy = max(y, desty) - min(y, desty)
-            emCost = dx + dy
-            n.mCost += fromnode.mCost
-            n.score = n.mCost + emCost
-            n.parent = fromnode
+            dx = max(x, dest_x) - min(x, dest_x)
+            dy = max(y, dest_y) - min(y, dest_y)
+            em_cost = dx + dy
+            n.m_cost += from_node.m_cost
+            n.score = n.m_cost + em_cost
+            n.parent = from_node
             return n
         return None
 
@@ -228,7 +228,7 @@ class Environment(object):
                 if math.fabs(x - start.x) + math.fabs(y - start.y) <= distance and self.tiles[x][y].state == Tile.STATE_PASSABLE:
                     end = self.tiles[x][y]
                     start_tile = self.tiles[x][y]
-                    p = self.path_finder.findPath(start_tile, end)
+                    p = self.path_finder.find_path(start_tile, end)
                     if p and len(p.nodes) <= distance + 1:
                         rp.add((x, y))
         return rp
@@ -256,6 +256,7 @@ class Configuration(dict):
         self.update(yaml.load(default_file))
         self._user_config = yaml.load(user_file)
         user_file.close()
+        default_file.close()
         self.update(self._user_config)
 
     def update_user_config(self, *args, **kwargs):

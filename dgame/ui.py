@@ -190,7 +190,7 @@ class Map(pygame.sprite.Sprite):
         '''Highlight a path. with color'''
         if end:
             start = self.env.get_tile(start)
-            p = self.env.path_finder.findPath(start, end)
+            p = self.env.path_finder.find_path(start, end)
             if p:
                 for n in p.nodes:
                     pygame.draw.rect(self.overlay, color, self.viewport.get_rect(n.location.x, n.location.y))

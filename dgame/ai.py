@@ -14,16 +14,16 @@ class Path:
         self.nodes = nodes;
         self.totalCost = totalCost;
 
-    def getNodes(self):
+    def get_nodes(self):
         return self.nodes
 
-    def getTotalMoveCost(self):
+    def get_total_move_cost(self):
         return self.totalCost
 
 class Node:
-    def __init__(self, location, mCost, lid, parent = None):
+    def __init__(self, location, m_cost, lid, parent = None):
         self.location = location  # where is this node located
-        self.mCost = mCost  # total move cost to reach this node
+        self.m_cost = m_cost  # total move cost to reach this node
         self.parent = parent  # parent node
         self.score = 0  # calculated score for this node
         self.lid = lid  # set the location id - unique for each location in the map
@@ -39,19 +39,19 @@ class AStar:
     def __init__(self, maphandler):
         self.mh = maphandler
 
-    def _getBestOpenNode(self):
-        bestNode = None
+    def _get_best_open_node(self):
+        best_node = None
         for n in self.on:
-            if not bestNode:
-                bestNode = n
+            if not best_node:
+                best_node = n
             else:
-                if n.score <= bestNode.score:
-                    bestNode = n
-        return bestNode
+                if n.score <= best_node.score:
+                    best_node = n
+        return best_node
 
-    def _tracePath(self, n):
+    def _trace_path(self, n):
         nodes = [];
-        totalCost = n.mCost;
+        total_cost = n.m_cost;
         p = n.parent;
         nodes.insert(0, n);
 
@@ -62,15 +62,15 @@ class AStar:
             nodes.insert(0, p)
             p = p.parent
 
-        return Path(nodes, totalCost)
+        return Path(nodes, total_cost)
 
-    def _handleNode(self, node, end):
+    def _handle_node(self, node, end):
         i = self.o.index(node.lid)
         self.on.pop(i)
         self.o.pop(i)
         self.c.append(node.lid)
 
-        nodes = self.mh.getAdjacentNodes(node, end)
+        nodes = self.mh.get_adjacent_nodes(node, end)
 
         for n in nodes:
             if n.location == end:
@@ -83,7 +83,7 @@ class AStar:
                 # already in open, check if better score
                 i = self.o.index(n.lid)
                 on = self.on[i];
-                if n.mCost < on.mCost:
+                if n.m_cost < on.m_cost:
                     self.on.pop(i);
                     self.o.pop(i);
                     self.on.append(n);
@@ -95,21 +95,21 @@ class AStar:
 
         return None
 
-    def findPath(self, fromlocation, tolocation):
+    def find_path(self, from_location, to_location):
         self.o = []
         self.on = []
         self.c = []
 
-        end = tolocation
-        fnode = self.mh.getNode(fromlocation, True)
+        end = to_location
+        fnode = self.mh.get_node(from_location, True)
         self.on.append(fnode)
         self.o.append(fnode.lid)
-        nextNode = fnode
+        next_node = fnode
 
-        while nextNode is not None:
-            finish = self._handleNode(nextNode, end)
+        while next_node is not None:
+            finish = self._handle_node(next_node, end)
             if finish:
-                return self._tracePath(finish)
-            nextNode = self._getBestOpenNode()
+                return self._trace_path(finish)
+            next_node = self._get_best_open_node()
 
         return None
