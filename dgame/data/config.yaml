@@ -34,6 +34,9 @@ creatures:
   sheep:
     hp: 50
     moves: 5
+  wolf:
+    hp: 50
+    moves: 2
 
 generator:
   small_room: [[5,5],[9,9]]
@@ -41,17 +44,17 @@ generator:
   large_room: [[16,16],[20,20]]
   map_config:
     small:
-      small_rooms: 4
-      medium_rooms: 2
-      large_rooms: 1
+      small_room: 4
+      medium_room: 2
+      large_room: 1
     medium:
-      small_rooms: 8
-      medium_rooms: 4
-      large_rooms: 2
+      small_room: 8
+      medium_room: 4
+      large_room: 2
     large:
-      small_rooms: 16
-      medium_rooms: 8
-      large_rooms: 4
+      small_room: 16
+      medium_room: 8
+      large_room: 4
 
 ui:
   camera:
@@ -62,6 +65,8 @@ ui:
 image:
   creatures:
     sheep:
+      static: ['static']
+    wolf:
       static: ['static']
   biomes:
     default:

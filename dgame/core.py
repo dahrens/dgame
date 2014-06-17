@@ -12,7 +12,6 @@ import math
 from dgame.event import EventDispatcher, CommandQueue, UndoCommand, FlushCommand, OneWayCommand
 from dgame.ui import Map, Entity, Floor, FpsLayer
 from dgame.image import Biome, CreatureSheet
-from dgame.generator import EnvironmentGenerator
 from dgame.ai import AStar, Node
 
 PROFILE = False
@@ -75,15 +74,17 @@ class Player(object):
 class Creature(object):
     '''A creature can move around in the environment'''
 
-    def __init__(self, creature_config, creature_sheet = None, size = (1, 1), pos = None, env = None):
-        self.creature_sheet = creature_sheet
-        self.max_hp = creature_config['hp']
-        self.hp = creature_config['hp']
-        self.moves_max = creature_config['moves']
-        self.moves = creature_config['moves']
+    def __init__(self, config, sheet = None, size = (1, 1), pos = None, env = None):
+        self.sheet = sheet
+        self.max_hp = config['hp']
+        self.hp = config['hp']
+        self.moves_max = config['moves']
+        self.moves = config['moves']
         self.env = env
         self.position = pos
-        self.ui = Entity(self.creature_sheet)
+        if self.env and self.position:
+            self.env.creatures.append(self)
+        self.ui = Entity(self.sheet)
 
     @property
     def x(self):
@@ -310,11 +311,13 @@ class Launcher():
                                       Creature(self.cfg['creatures']['sheep'], self.creatures['sheep']),
                                       Creature(self.cfg['creatures']['sheep'], self.creatures['sheep']),
                                       Creature(self.cfg['creatures']['sheep'], self.creatures['sheep'])])
-        self.env_generator = EnvironmentGenerator(self.cfg['generator'], seed = 'testing')
+        from dgame.generator import EnvironmentGenerator
+        self.env_generator = EnvironmentGenerator(self.cfg['generator'], self.cfg['creatures'], seed = 'testing')
         self.env = self.env_generator.create(Environment(biome = self.biomes['default'],
                                                          config = self.cfg['environment'],
                                                          map_size_name = 'small',
-                                                         player = self.player))
+                                                         player = self.player),
+                                             self.creatures)
         self.camera = Map(pygame.Rect((0, 0), (self.width, self.height - 256)),
                           self.env,
                           zoom_levels = self.cfg['ui']['camera']['zoom_levels'],
